@@ -162,7 +162,7 @@ def main():
         result = analyze_tokens({k: tokens[k] for k in selected})
         generate_pdf_report(result)
         export_csv(result)
-        send_email_with_pdf("daily_report.pdf", "yooguruto@gmail.com")
+        #send_email_with_pdf("daily_report.pdf", "yooguruto@gmail.com")
         st.success("Raport został wysłany na maila i zapisany jako CSV.")
 
 if __name__ == "__main__":

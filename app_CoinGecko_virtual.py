@@ -42,6 +42,16 @@ def compute_bollinger_bands(data, window=20):
     lower = ma - 2 * std
     return ma, upper, lower
 
+def compute_confidence_score(rsi, macd, macd_signal, price, ema_short, ema_long):
+    score = 0
+    if rsi < 30:
+        score += 1
+    if macd > macd_signal:
+        score += 1
+    if price > ema_short and price > ema_long:
+        score += 1
+    return score / 3 * 100  # percent
+
 def load_token_from_coingecko(slug, days=90):
     url = f"https://api.coingecko.com/api/v3/coins/{slug}/market_chart"
     params = {"vs_currency": "usd", "days": days, "interval": "daily"}
@@ -58,9 +68,11 @@ def load_token_from_coingecko(slug, days=90):
     df['volume'] = df['volume'].astype(float)
     return df
 
-# Tylko Virtuals Protocol
+# Tokeny
 tokens = {
-    "Virtuals Protocol": "virtual-protocol"
+    "Virtuals Protocol": "virtual-protocol",
+    "Bitcoin": "bitcoin",
+    "Ethereum": "ethereum"
 }
 
 def analyze_tokens(selected_tokens):
@@ -83,6 +95,8 @@ def analyze_tokens(selected_tokens):
             latest_bb_upper = bb_upper.iloc[-1]
             latest_bb_lower = bb_lower.iloc[-1]
 
+            score = compute_confidence_score(latest_rsi, latest_macd, latest_macd_signal, latest_price, latest_ema_short, latest_ema_long)
+
             signal = "🔴 Nie – RSI nie jest poniżej 30"
             if latest_rsi < 30:
                 signal = "🟢 Tak – RSI < 30"
@@ -98,6 +112,7 @@ def analyze_tokens(selected_tokens):
                 "EMA_long": round(latest_ema_long, 3),
                 "BB_upper": round(latest_bb_upper, 3),
                 "BB_lower": round(latest_bb_lower, 3),
+                "Confidence": f"{score:.1f}%",
                 "Ocena zakupu": signal,
                 "df": df,
                 "rsi_series": rsi,
@@ -113,7 +128,7 @@ def analyze_tokens(selected_tokens):
     return results
 
 def main():
-    st.title("Analiza Virtuals Protocol z CoinGecko")
+    st.title("Analiza Tokenów z CoinGecko")
     selected = st.multiselect("Wybierz tokeny:", list(tokens.keys()), default=list(tokens.keys()))
     if st.button("📄 Wygeneruj PDF"):
         result = analyze_tokens({k: tokens[k] for k in selected})
@@ -136,6 +151,7 @@ def main():
                 "EMA_long": [data["EMA_long"]],
                 "BB_upper": [data["BB_upper"]],
                 "BB_lower": [data["BB_lower"]],
+                "Confidence": [data["Confidence"]],
                 "Ocena zakupu": [data["Ocena zakupu"]]
             }, orient='columns')
             st.dataframe(df_display.style.applymap(

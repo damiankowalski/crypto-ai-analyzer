@@ -157,12 +157,20 @@ def send_email_with_pdf(filename, to_address):
 def main():
     st.title("Analiza Tokenów AI (RSI, MACD, MA)")
     selected = st.multiselect("Wybierz tokeny:", list(tokens.keys()), default=list(tokens.keys()))
-    if st.button("🔁 Generuj i wyślij PDF"):
+
+    if st.button("📄 Wygeneruj PDF do pobrania"):
         result = analyze_tokens({k: tokens[k] for k in selected})
         generate_pdf_report(result)
         export_csv(result)
-        #send_email_with_pdf("daily_report.pdf", "yooguruto@gmail.com")
-        st.success("Raport został zapisany jako PDF i CSV.")
+        with open("daily_report.pdf", "rb") as f:
+            st.download_button("📥 Pobierz PDF", f, file_name="daily_report.pdf")
+
+    if st.button("📊 Pokaż raport na stronie"):
+        result = analyze_tokens({k: tokens[k] for k in selected})
+        for token, data in result.items():
+            st.subheader(token)
+            for key, val in data.items():
+                st.write(f"{key}: {val}")
 
 if __name__ == "__main__":
     main()

@@ -30,6 +30,18 @@ def compute_macd(data):
     signal = macd.ewm(span=9, adjust=False).mean()
     return macd, signal
 
+def compute_ema_crossover(data):
+    ema_short = data.ewm(span=12, adjust=False).mean()
+    ema_long = data.ewm(span=26, adjust=False).mean()
+    return ema_short, ema_long
+
+def compute_bollinger_bands(data, window=20):
+    ma = data.rolling(window).mean()
+    std = data.rolling(window).std()
+    upper = ma + 2 * std
+    lower = ma - 2 * std
+    return ma, upper, lower
+
 def load_token_from_coingecko(slug, days=90):
     url = f"https://api.coingecko.com/api/v3/coins/{slug}/market_chart"
     params = {"vs_currency": "usd", "days": days, "interval": "daily"}
@@ -51,32 +63,6 @@ tokens = {
     "Virtuals Protocol": "virtual-protocol"
 }
 
-class ReportPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
-        self.set_font("DejaVu", "", 12)
-
-    def summary_table(self, summaries):
-        self.add_page()
-        self.set_font("DejaVu", "", 14)
-        self.cell(0, 10, "Podsumowanie sygnałów zakupu", ln=True, align="C")
-        self.ln(5)
-        self.set_font("DejaVu", "", 12)
-        self.set_fill_color(200, 200, 200)
-        self.cell(60, 10, "Token", 1, 0, "C", True)
-        self.cell(120, 10, "Ocena zakupu", 1, 1, "C", True)
-
-        for token, ocena in summaries.items():
-            if "🟢" in ocena:
-                self.set_fill_color(180, 255, 180)
-            elif "🟡" in ocena:
-                self.set_fill_color(255, 240, 150)
-            else:
-                self.set_fill_color(255, 180, 180)
-            self.cell(60, 10, token, 1, 0, "L", True)
-            self.cell(120, 10, ocena, 1, 1, "L", True)
-
 def analyze_tokens(selected_tokens):
     results = {}
     for token, slug in selected_tokens.items():
@@ -84,52 +70,53 @@ def analyze_tokens(selected_tokens):
             df = load_token_from_coingecko(slug)
             rsi = compute_rsi(df["price"])
             macd, macd_signal = compute_macd(df["price"])
+            ema_short, ema_long = compute_ema_crossover(df["price"])
+            bb_ma, bb_upper, bb_lower = compute_bollinger_bands(df["price"])
 
             latest_price = df["price"].iloc[-1]
             latest_rsi = rsi.iloc[-1]
             volume = df['volume'].iloc[-1]
+            latest_macd = macd.iloc[-1]
+            latest_macd_signal = macd_signal.iloc[-1]
+            latest_ema_short = ema_short.iloc[-1]
+            latest_ema_long = ema_long.iloc[-1]
+            latest_bb_upper = bb_upper.iloc[-1]
+            latest_bb_lower = bb_lower.iloc[-1]
 
-            # Sygnał
+            signal = "🔴 Nie – RSI nie jest poniżej 30"
             if latest_rsi < 30:
                 signal = "🟢 Tak – RSI < 30"
-            else:
-                signal = "🔴 Nie – RSI nie jest poniżej 30"
 
             results[token] = {
                 "symbol": slug,
                 "RSI": round(latest_rsi, 2),
                 "Cena": round(latest_price, 3),
                 "Wolumen": round(volume, 2),
-                "MACD": round(macd.iloc[-1], 4),
-                "MACD_signal": round(macd_signal.iloc[-1], 4),
+                "MACD": round(latest_macd, 4),
+                "MACD_signal": round(latest_macd_signal, 4),
+                "EMA_short": round(latest_ema_short, 3),
+                "EMA_long": round(latest_ema_long, 3),
+                "BB_upper": round(latest_bb_upper, 3),
+                "BB_lower": round(latest_bb_lower, 3),
                 "Ocena zakupu": signal,
                 "df": df,
                 "rsi_series": rsi,
                 "macd": macd,
-                "macd_signal": macd_signal
+                "macd_signal": macd_signal,
+                "ema_short": ema_short,
+                "ema_long": ema_long,
+                "bb_upper": bb_upper,
+                "bb_lower": bb_lower
             }
         except Exception as e:
             results[token] = {"Ocena zakupu": f"Błąd: {e}"}
     return results
-
-def generate_pdf_report(results, filename="daily_report.pdf"):
-    pdf = ReportPDF()
-    summary = {token: data.get("Ocena zakupu", "Brak") for token, data in results.items()}
-    pdf.summary_table(summary)
-    pdf.output(filename)
-
-def export_csv(results, filename="daily_report.csv"):
-    df = pd.DataFrame(results).T.drop(columns=["df", "rsi_series", "macd", "macd_signal"], errors="ignore")
-    df.index.name = "Token"
-    df.to_csv(filename)
 
 def main():
     st.title("Analiza Virtuals Protocol z CoinGecko")
     selected = st.multiselect("Wybierz tokeny:", list(tokens.keys()), default=list(tokens.keys()))
     if st.button("📄 Wygeneruj PDF"):
         result = analyze_tokens({k: tokens[k] for k in selected})
-        generate_pdf_report(result)
-        export_csv(result)
         st.success("PDF został wygenerowany.")
     if st.button("📊 Pokaż raport na stronie"):
         result = analyze_tokens({k: tokens[k] for k in selected})
@@ -138,19 +125,24 @@ def main():
             if "Błąd" in data.get("Ocena zakupu", ""):
                 st.error(data["Ocena zakupu"])
                 continue
-            df = pd.DataFrame({
-                "Metryka": ["symbol", "RSI", "Cena", "Wolumen", "MACD", "MACD_signal", "Ocena zakupu"],
-                "Wartość": [
-                    data["symbol"],
-                    data["RSI"],
-                    data["Cena"],
-                    data["Wolumen"],
-                    data["MACD"],
-                    data["MACD_signal"],
-                    data["Ocena zakupu"]
-                ]
-            })
-            st.table(df)
+
+            df_display = pd.DataFrame.from_dict({
+                "RSI": [data["RSI"]],
+                "Cena": [data["Cena"]],
+                "Wolumen": [data["Wolumen"]],
+                "MACD": [data["MACD"]],
+                "MACD_signal": [data["MACD_signal"]],
+                "EMA_short": [data["EMA_short"]],
+                "EMA_long": [data["EMA_long"]],
+                "BB_upper": [data["BB_upper"]],
+                "BB_lower": [data["BB_lower"]],
+                "Ocena zakupu": [data["Ocena zakupu"]]
+            }, orient='columns')
+            st.dataframe(df_display.style.applymap(
+                lambda val: 'background-color: #c8e6c9' if '🟢' in str(val)
+                else ('background-color: #fff9c4' if '🟡' in str(val)
+                else ('background-color: #ffcdd2' if '🔴' in str(val) else ''))
+            ))
 
             st.write("### Wykres RSI")
             fig_rsi, ax_rsi = plt.subplots()
@@ -167,6 +159,24 @@ def main():
             ax_macd.legend()
             ax_macd.set_title("MACD")
             st.pyplot(fig_macd)
+
+            st.write("### Wykres EMA")
+            fig_ema, ax_ema = plt.subplots()
+            data["df"]["price"].plot(ax=ax_ema, label="Cena")
+            data["ema_short"].plot(ax=ax_ema, label="EMA 12")
+            data["ema_long"].plot(ax=ax_ema, label="EMA 26")
+            ax_ema.legend()
+            ax_ema.set_title("EMA crossover")
+            st.pyplot(fig_ema)
+
+            st.write("### Bollinger Bands")
+            fig_bb, ax_bb = plt.subplots()
+            data["df"]["price"].plot(ax=ax_bb, label="Cena")
+            data["bb_upper"].plot(ax=ax_bb, linestyle='--', label="Górna BB")
+            data["bb_lower"].plot(ax=ax_bb, linestyle='--', label="Dolna BB")
+            ax_bb.legend()
+            ax_bb.set_title("Bollinger Bands")
+            st.pyplot(fig_bb)
 
 if __name__ == "__main__":
     main()

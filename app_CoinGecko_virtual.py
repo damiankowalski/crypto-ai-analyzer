@@ -135,30 +135,42 @@ def main():
         st.success("PDF został wygenerowany.")
     if st.button("📊 Pokaż raport na stronie"):
         result = analyze_tokens({k: tokens[k] for k in selected})
+        st.subheader("📋 Podsumowanie")
+        combined_data = []
         for token, data in result.items():
-            st.subheader(token)
             if "Błąd" in data.get("Ocena zakupu", ""):
-                st.error(data["Ocena zakupu"])
                 continue
+            row = {
+                "Token": token,
+                "RSI": data["RSI"],
+                "Cena": data["Cena"],
+                "Wolumen": data["Wolumen"],
+                "MACD": data["MACD"],
+                "MACD_signal": data["MACD_signal"],
+                "EMA_short": data["EMA_short"],
+                "EMA_long": data["EMA_long"],
+                "BB_upper": data["BB_upper"],
+                "BB_lower": data["BB_lower"],
+                "Confidence": data["Confidence"],
+                "Ocena zakupu": data["Ocena zakupu"]
+            }
+            combined_data.append(row)
 
-            df_display = pd.DataFrame.from_dict({
-                "RSI": [data["RSI"]],
-                "Cena": [data["Cena"]],
-                "Wolumen": [data["Wolumen"]],
-                "MACD": [data["MACD"]],
-                "MACD_signal": [data["MACD_signal"]],
-                "EMA_short": [data["EMA_short"]],
-                "EMA_long": [data["EMA_long"]],
-                "BB_upper": [data["BB_upper"]],
-                "BB_lower": [data["BB_lower"]],
-                "Confidence": [data["Confidence"]],
-                "Ocena zakupu": [data["Ocena zakupu"]]
-            }, orient='columns')
-            st.dataframe(df_display.style.applymap(
+        if combined_data:
+            df_summary = pd.DataFrame(combined_data)
+            st.dataframe(df_summary.style.applymap(
                 lambda val: 'background-color: #c8e6c9' if '🟢' in str(val)
                 else ('background-color: #fff9c4' if '🟡' in str(val)
                 else ('background-color: #ffcdd2' if '🔴' in str(val) else ''))
             ))
+
+        for token, data in result.items():
+            if "Błąd" in data.get("Ocena zakupu", ""):
+                st.subheader(token)
+                st.error(data["Ocena zakupu"])
+                continue
+
+            st.subheader(f"📈 Wykresy dla {token}")
 
             st.write("### Wykres RSI")
             fig_rsi, ax_rsi = plt.subplots()

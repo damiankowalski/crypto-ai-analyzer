@@ -102,7 +102,11 @@ def analyze_tokens(selected_tokens):
                 "Wolumen": round(volume, 2),
                 "MACD": round(macd.iloc[-1], 4),
                 "MACD_signal": round(macd_signal.iloc[-1], 4),
-                "Ocena zakupu": signal
+                "Ocena zakupu": signal,
+                "df": df,
+                "rsi_series": rsi,
+                "macd": macd,
+                "macd_signal": macd_signal
             }
         except Exception as e:
             results[token] = {"Ocena zakupu": f"Błąd: {e}"}
@@ -115,7 +119,7 @@ def generate_pdf_report(results, filename="daily_report.pdf"):
     pdf.output(filename)
 
 def export_csv(results, filename="daily_report.csv"):
-    df = pd.DataFrame(results).T
+    df = pd.DataFrame(results).T.drop(columns=["df", "rsi_series", "macd", "macd_signal"], errors="ignore")
     df.index.name = "Token"
     df.to_csv(filename)
 
@@ -131,8 +135,38 @@ def main():
         result = analyze_tokens({k: tokens[k] for k in selected})
         for token, data in result.items():
             st.subheader(token)
-            for key, val in data.items():
-                st.write(f"{key}: {val}")
+            if "Błąd" in data.get("Ocena zakupu", ""):
+                st.error(data["Ocena zakupu"])
+                continue
+            df = pd.DataFrame({
+                "Metryka": ["symbol", "RSI", "Cena", "Wolumen", "MACD", "MACD_signal", "Ocena zakupu"],
+                "Wartość": [
+                    data["symbol"],
+                    data["RSI"],
+                    data["Cena"],
+                    data["Wolumen"],
+                    data["MACD"],
+                    data["MACD_signal"],
+                    data["Ocena zakupu"]
+                ]
+            })
+            st.table(df)
+
+            st.write("### Wykres RSI")
+            fig_rsi, ax_rsi = plt.subplots()
+            data["rsi_series"].plot(ax=ax_rsi, label="RSI")
+            ax_rsi.axhline(30, color="red", linestyle="--")
+            ax_rsi.axhline(70, color="green", linestyle="--")
+            ax_rsi.set_title("RSI")
+            st.pyplot(fig_rsi)
+
+            st.write("### Wykres MACD")
+            fig_macd, ax_macd = plt.subplots()
+            data["macd"].plot(ax=ax_macd, label="MACD")
+            data["macd_signal"].plot(ax=ax_macd, label="MACD sygnał")
+            ax_macd.legend()
+            ax_macd.set_title("MACD")
+            st.pyplot(fig_macd)
 
 if __name__ == "__main__":
     main()

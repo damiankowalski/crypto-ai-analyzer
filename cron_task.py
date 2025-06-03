@@ -135,4 +135,5 @@ for name, slug in tokens.items():
 #    send_email("\n".join(pos), attachment_path=pdf_path)
 
 # --- WYŚLIJ ZAWSZE (TEST) ---
+pdf_path = generate_pdf(rows)
 send_email("✅ To jest testowy e-mail z GitHub Actions. Skrypt działa prawidłowo.")

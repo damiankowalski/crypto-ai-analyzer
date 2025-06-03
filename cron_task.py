@@ -48,7 +48,7 @@ class PDFReport(FPDF):
 
     def header(self):
         self.set_font("DejaVu", "", 14)
-        self.cell(0, 10, "🔍 Raport Sygnałów Zakupu Tokenów AI", ln=True, align="C")
+        self.cell(0, 10, "Raport Sygnałów Zakupu Tokenów AI", ln=True, align="C")
         self.ln(10)
 
     def summary_table(self, rows):
@@ -95,7 +95,7 @@ def send_email(body, attachment_path=None):
     msg = MIMEMultipart()
     msg['From'] = os.getenv("EMAIL_ADDRESS")
     msg['To'] = os.getenv("EMAIL_ADDRESS")
-    msg['Subject'] = '🔔 Sygnał zakupu AI tokenów'
+    msg['Subject'] = 'Sygnał zakupu AI tokenów'
     msg.attach(MIMEText(body, 'plain'))
 
     if attachment_path:
@@ -132,7 +132,7 @@ for name, slug in tokens.items():
         price = df['price'].iloc[-1]
 
         conf = compute_confidence(rsi.iloc[-1], macd.iloc[-1], signal.iloc[-1], price, ema_s.iloc[-1], ema_l.iloc[-1])
-        decision = "🟢 TAK" if conf >= 66 else "🟡 MOŻE" if conf >= 33 else "🔴 NIE"
+        decision = "TAK" if conf >= 66 else "MOŻE" if conf >= 33 else "NIE"
 
         line = f"{name}: {decision} (RSI={rsi.iloc[-1]:.1f}, Conf={conf}%)"
         summary.append(line)

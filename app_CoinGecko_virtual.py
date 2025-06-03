@@ -12,6 +12,7 @@ from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from fpdf import FPDF
 from datetime import datetime
+from io import BytesIO
 
 load_dotenv()
 
@@ -97,13 +98,14 @@ def analyze_tokens(selected_tokens):
 
             score = compute_confidence_score(latest_rsi, latest_macd, latest_macd_signal, latest_price, latest_ema_short, latest_ema_long)
 
-            signal = "🔴 Nie – RSI nie jest poniżej 30"
+            signal = "Nie – RSI nie jest poniżej 30"
             if latest_rsi < 30:
-                signal = "🟢 Tak – RSI < 30"
+                signal = "Tak – RSI < 30"
 
             results[token] = {
                 "symbol": slug,
                 "RSI": round(latest_rsi, 2),
+                "Ocena zakupu": signal,
                 "Cena": round(latest_price, 3),
                 "Wolumen": round(volume, 2),
                 "MACD": round(latest_macd, 4),
@@ -113,7 +115,6 @@ def analyze_tokens(selected_tokens):
                 "BB_upper": round(latest_bb_upper, 3),
                 "BB_lower": round(latest_bb_lower, 3),
                 "Confidence": f"{score:.1f}%",
-                "Ocena zakupu": signal,
                 "df": df,
                 "rsi_series": rsi,
                 "macd": macd,
@@ -130,9 +131,32 @@ def analyze_tokens(selected_tokens):
 def main():
     st.title("Analiza Tokenów z CoinGecko")
     selected = st.multiselect("Wybierz tokeny:", list(tokens.keys()), default=list(tokens.keys()))
-    if st.button("📄 Wygeneruj PDF"):
+    if st.button("📄 Wygeneruj CSV"):
         result = analyze_tokens({k: tokens[k] for k in selected})
-        st.success("PDF został wygenerowany.")
+        combined_data = []
+        for token, data in result.items():
+            if "Błąd" in data.get("Ocena zakupu", ""):
+                continue
+            row = {
+                "Token": token,
+                "RSI": data["RSI"],
+                "Ocena zakupu": data["Ocena zakupu"],
+                "Cena": data["Cena"],
+                "Wolumen": data["Wolumen"],
+                "MACD": data["MACD"],
+                "MACD_signal": data["MACD_signal"],
+                "EMA_short": data["EMA_short"],
+                "EMA_long": data["EMA_long"],
+                "BB_upper": data["BB_upper"],
+                "BB_lower": data["BB_lower"],
+                "Confidence": data["Confidence"]
+            }
+            combined_data.append(row)
+
+        df_csv = pd.DataFrame(combined_data)
+        csv_bytes = df_csv.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Pobierz CSV", data=csv_bytes, file_name="analiza_tokenow.csv", mime="text/csv")
+
     if st.button("📊 Pokaż raport na stronie"):
         result = analyze_tokens({k: tokens[k] for k in selected})
         st.subheader("📋 Podsumowanie")
@@ -143,6 +167,7 @@ def main():
             row = {
                 "Token": token,
                 "RSI": data["RSI"],
+                "Ocena zakupu": data["Ocena zakupu"],
                 "Cena": data["Cena"],
                 "Wolumen": data["Wolumen"],
                 "MACD": data["MACD"],
@@ -151,18 +176,21 @@ def main():
                 "EMA_long": data["EMA_long"],
                 "BB_upper": data["BB_upper"],
                 "BB_lower": data["BB_lower"],
-                "Confidence": data["Confidence"],
-                "Ocena zakupu": data["Ocena zakupu"]
+                "Confidence": data["Confidence"]
             }
             combined_data.append(row)
 
         if combined_data:
             df_summary = pd.DataFrame(combined_data)
             st.dataframe(df_summary.style.applymap(
-                lambda val: 'background-color: #c8e6c9' if '🟢' in str(val)
-                else ('background-color: #fff9c4' if '🟡' in str(val)
-                else ('background-color: #ffcdd2' if '🔴' in str(val) else ''))
+                lambda val: 'background-color: #c8e6c9' if 'Tak' in str(val)
+                else ('background-color: #ffcdd2' if 'Nie' in str(val) else '')
             ))
+
+            if any("Tak" in row["Ocena zakupu"] for row in combined_data):
+                st.success("🎯 Wykryto sygnały zakupu – sprawdź szczegóły poniżej.")
+            else:
+                st.warning("Brak silnych sygnałów zakupu na ten moment.")
 
         tabs = st.tabs(list(result.keys()))
         for idx, (token, data) in enumerate(result.items()):
@@ -176,8 +204,10 @@ def main():
                 st.write("### Wykres RSI")
                 fig_rsi, ax_rsi = plt.subplots()
                 data["rsi_series"].plot(ax=ax_rsi, label="RSI")
-                ax_rsi.axhline(30, color="red", linestyle="--")
-                ax_rsi.axhline(70, color="green", linestyle="--")
+                ax_rsi.axhline(30, color="red", linestyle="--", label="30")
+                ax_rsi.axhline(70, color="green", linestyle="--", label="70")
+                ax_rsi.legend()
+                ax_rsi.grid(True)
                 ax_rsi.set_title("RSI")
                 st.pyplot(fig_rsi)
 
@@ -186,6 +216,7 @@ def main():
                 data["macd"].plot(ax=ax_macd, label="MACD")
                 data["macd_signal"].plot(ax=ax_macd, label="MACD sygnał")
                 ax_macd.legend()
+                ax_macd.grid(True)
                 ax_macd.set_title("MACD")
                 st.pyplot(fig_macd)
 
@@ -195,6 +226,7 @@ def main():
                 data["ema_short"].plot(ax=ax_ema, label="EMA 12")
                 data["ema_long"].plot(ax=ax_ema, label="EMA 26")
                 ax_ema.legend()
+                ax_ema.grid(True)
                 ax_ema.set_title("EMA crossover")
                 st.pyplot(fig_ema)
 
@@ -204,6 +236,7 @@ def main():
                 data["bb_upper"].plot(ax=ax_bb, linestyle='--', label="Górna BB")
                 data["bb_lower"].plot(ax=ax_bb, linestyle='--', label="Dolna BB")
                 ax_bb.legend()
+                ax_bb.grid(True)
                 ax_bb.set_title("Bollinger Bands")
                 st.pyplot(fig_bb)
 

@@ -41,13 +41,18 @@ def compute_confidence(rsi, macd, signal, price, ema_s, ema_l):
 
 # --- PDF ---
 class PDFReport(FPDF):
-    def header(self):
+    def __init__(self):
+        super().__init__()
         self.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
         self.set_font("DejaVu", "", 14)
+
+    def header(self):
+        self.set_font("DejaVu", "", 14)
+        self.cell(0, 10, "🔍 Raport Sygnałów Zakupu Tokenów AI", ln=True, align="C")
         self.ln(10)
 
     def summary_table(self, rows):
-        self.set_font("Arial", "", 11)
+        self.set_font("DejaVu", "", 11)
         self.set_fill_color(220, 220, 220)
         self.cell(60, 10, "Token", 1, 0, "C", 1)
         self.cell(120, 10, "Ocena zakupu", 1, 1, "C", 1)

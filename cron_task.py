@@ -43,7 +43,7 @@ def compute_confidence(rsi, macd, signal, price, ema_s, ema_l):
 class PDFReport(FPDF):
     def __init__(self):
         super().__init__()
-        self.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+        self.add_font("DejaVu", "", "DejaVuSans.ttf")
         self.set_font("DejaVu", "", 14)
 
     def header(self):
@@ -57,9 +57,9 @@ class PDFReport(FPDF):
         self.cell(60, 10, "Token", 1, 0, "C", 1)
         self.cell(120, 10, "Ocena zakupu", 1, 1, "C", 1)
         for token, ocena in rows:
-            if "🟢" in ocena:
+            if "TAK" in ocena:
                 self.set_fill_color(180, 255, 180)
-            elif "🟡" in ocena:
+            elif "MOŻE" in ocena:
                 self.set_fill_color(255, 240, 150)
             else:
                 self.set_fill_color(255, 180, 180)
@@ -70,11 +70,13 @@ def generate_pdf(rows, filename="crypto_report.pdf"):
     pdf = PDFReport()
     pdf.add_page()
     pdf.summary_table(rows)
-    path = os.path.join(os.getcwd(), filename)
-    pdf.output(path)
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"PDF nie został zapisany: {path}")
-    return path
+    pdf.output(filename)
+    if os.path.exists(filename):
+        print(f"[INFO] PDF zapisany: {filename}")
+        return filename
+    else:
+        print("[ERROR] PDF nie został zapisany.")
+        return None
 
 # --- Pobierz dane z CoinGecko ---
 def load_data(slug):
@@ -98,20 +100,18 @@ def send_email(body, attachment_path=None):
     msg['Subject'] = 'Sygnał zakupu AI tokenów'
     msg.attach(MIMEText(body, 'plain'))
 
-    if attachment_path:
-        print(f"➕ Załącznik PDF: {attachment_path}")
-        if os.path.exists(attachment_path):
-            with open(attachment_path, "rb") as f:
-                attach = MIMEApplication(f.read(), _subtype="pdf")
-                attach.add_header('Content-Disposition', 'attachment', filename=os.path.basename(attachment_path))
-                msg.attach(attach)
-        else:
-            print(f"⚠️ Plik PDF nie istnieje: {attachment_path}")
+    if attachment_path and os.path.exists(attachment_path):
+        with open(attachment_path, "rb") as f:
+            attach = MIMEApplication(f.read(), _subtype="pdf")
+            attach.add_header('Content-Disposition', 'attachment', filename=os.path.basename(attachment_path))
+            msg.attach(attach)
+    else:
+        print("[WARN] PDF nie został dołączony do e-maila.")
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         server.login(os.getenv("EMAIL_ADDRESS"), os.getenv("EMAIL_PASSWORD"))
         server.send_message(msg)
-
+        print("[INFO] E-mail wysłany.")
 
 # --- Tokeny ---
 tokens = {
@@ -142,11 +142,11 @@ for name, slug in tokens.items():
         rows.append((name, f"Błąd: {str(e)}"))
 
 # --- Wyślij tylko jeśli jest sygnał kupna ---
-#pos = [line for line in summary if "🟢" in line]
-#if pos:
-#    pdf_path = generate_pdf(rows)
-#    send_email("\n".join(pos), attachment_path=pdf_path)
+# pos = [line for line in summary if "TAK" in line]
+# if pos:
+#     pdf_path = generate_pdf(rows)
+#     send_email("\n".join(pos), attachment_path=pdf_path)
 
 # --- WYŚLIJ ZAWSZE (TEST) ---
 pdf_path = generate_pdf(rows)
-send_email("✅ To jest testowy e-mail z GitHub Actions. Skrypt działa prawidłowo.")
+send_email("To jest testowy e-mail z GitHub Actions. Skrypt działa prawidłowo.", attachment_path=pdf_path)

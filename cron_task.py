@@ -88,6 +88,9 @@ for name, slug in tokens.items():
         summary.append(f"{name}: Błąd: {str(e)}")
 
 # --- Wyślij tylko jeśli jest sygnał kupna ---
-pos = [line for line in summary if "🟢" in line]
-if pos:
-    send_email("\n".join(pos))
+#pos = [line for line in summary if "🟢" in line]
+#if pos:
+#    send_email("\n".join(pos))
+
+# --- WYŚLIJ ZAWSZE (TEST) ---
+send_email("✅ To jest testowy e-mail z GitHub Actions. Skrypt działa prawidłowo.")

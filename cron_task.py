@@ -70,8 +70,11 @@ def generate_pdf(rows, filename="crypto_report.pdf"):
     pdf = PDFReport()
     pdf.add_page()
     pdf.summary_table(rows)
-    pdf.output(filename)
-    return filename
+    path = os.path.join(os.getcwd(), filename)
+    pdf.output(path)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"PDF nie został zapisany: {path}")
+    return path
 
 # --- Pobierz dane z CoinGecko ---
 def load_data(slug):
@@ -95,15 +98,20 @@ def send_email(body, attachment_path=None):
     msg['Subject'] = '🔔 Sygnał zakupu AI tokenów'
     msg.attach(MIMEText(body, 'plain'))
 
-    if attachment_path and os.path.exists(attachment_path):
-        with open(attachment_path, "rb") as f:
-            attach = MIMEApplication(f.read(), _subtype="pdf")
-            attach.add_header('Content-Disposition', 'attachment', filename=os.path.basename(attachment_path))
-            msg.attach(attach)
+    if attachment_path:
+        print(f"➕ Załącznik PDF: {attachment_path}")
+        if os.path.exists(attachment_path):
+            with open(attachment_path, "rb") as f:
+                attach = MIMEApplication(f.read(), _subtype="pdf")
+                attach.add_header('Content-Disposition', 'attachment', filename=os.path.basename(attachment_path))
+                msg.attach(attach)
+        else:
+            print(f"⚠️ Plik PDF nie istnieje: {attachment_path}")
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         server.login(os.getenv("EMAIL_ADDRESS"), os.getenv("EMAIL_PASSWORD"))
         server.send_message(msg)
+
 
 # --- Tokeny ---
 tokens = {

@@ -43,7 +43,7 @@ def compute_confidence(rsi, macd, signal, price, ema_s, ema_l):
 class PDFReport(FPDF):
     def header(self):
         self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "🔍 Raport Sygnałów Zakupu Tokenów AI", ln=True, align="C")
+        self.cell(0, 10, "Raport Sygnałów Zakupu Tokenów AI", ln=True, align="C")
         self.ln(10)
 
     def summary_table(self, rows):

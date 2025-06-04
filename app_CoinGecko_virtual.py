@@ -91,10 +91,18 @@ def main():
                 rsi = compute_rsi(df['price'])
                 macd, signal = compute_macd(df['price'])
                 ema_s, ema_l = compute_ema(df['price'])
+
+                # Synchronizacja indeksów
+                rsi.index = df.index
+                macd.index = df.index
+                signal.index = df.index
+                ema_s.index = df.index
+                ema_l.index = df.index
+
                 price = df['price'].iloc[-1]
                 conf, cause = compute_confidence(rsi.iloc[-1], macd.iloc[-1], signal.iloc[-1], price, ema_s.iloc[-1], ema_l.iloc[-1])
 
-                decision = "TAK" if conf >= 66 else "MOŻE" if conf >= 33 else "NIE"
+                decision = "TAK" if conf >= 66 else "MOŻe" if conf >= 33 else "NIE"
 
                 results.append({
                     "Token": token,
@@ -108,16 +116,44 @@ def main():
                     "Pewność [%]": conf,
                     "Uzasadnienie": cause
                 })
+
+                # Wykresy
+                st.subheader(f"📈 {token}")
+                st.line_chart(df['price'], height=200)
+
+                st.write("### RSI")
+                fig1, ax1 = plt.subplots()
+                rsi.plot(ax=ax1)
+                ax1.axhline(30, color='red', linestyle='--')
+                ax1.axhline(70, color='green', linestyle='--')
+                st.pyplot(fig1)
+
+                st.write("### MACD")
+                fig2, ax2 = plt.subplots()
+                macd.plot(ax=ax2, label='MACD')
+                signal.plot(ax=ax2, label='Sygnał')
+                ax2.legend()
+                st.pyplot(fig2)
+
+                st.write("### EMA")
+                fig3, ax3 = plt.subplots()
+                df['price'].plot(ax=ax3, label='Cena')
+                ema_s.plot(ax=ax3, label='EMA12')
+                ema_l.plot(ax=ax3, label='EMA26')
+                ax3.legend()
+                st.pyplot(fig3)
+
             except Exception as e:
                 results.append({"Token": token, "Ocena zakupu": f"Błąd: {str(e)}"})
 
-        df = pd.DataFrame(results)
+        df_results = pd.DataFrame(results)
 
         def highlight(row):
-            color = "#c8e6c9" if row["Ocena zakupu"] == "TAK" else ("#fff9c4" if row["Ocena zakupu"] == "MOŻE" else "#ffcdd2")
-            return ["background-color: " + color if col == "Ocena zakupu" else "" for col in row.index]
+            color = "#c8e6c9" if row["Ocena zakupu"] == "TAK" else ("#fff9c4" if row["Ocena zakupu"] == "MOŻe" else "#ffcdd2")
+            return [f"background-color: {color}" if col == "Ocena zakupu" else "" for col in row.index]
 
-        st.dataframe(df.style.apply(highlight, axis=1))
+        st.subheader("📄 Podsumowanie")
+        st.dataframe(df_results.style.apply(highlight, axis=1))
 
 if __name__ == "__main__":
     main()

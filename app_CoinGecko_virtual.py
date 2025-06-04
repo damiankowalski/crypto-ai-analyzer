@@ -84,6 +84,8 @@ def main():
 
     if st.button("📊 Pokaż raport"):
         results = []
+        wykresy = {}
+
         for token in selected:
             slug = tokeny[token]
             try:
@@ -102,7 +104,7 @@ def main():
                 price = df['price'].iloc[-1]
                 conf, cause = compute_confidence(rsi.iloc[-1], macd.iloc[-1], signal.iloc[-1], price, ema_s.iloc[-1], ema_l.iloc[-1])
 
-                decision = "TAK" if conf >= 66 else "MOŻe" if conf >= 33 else "NIE"
+                decision = "TAK" if conf >= 66 else "MOŻE" if conf >= 33 else "NIE"
 
                 results.append({
                     "Token": token,
@@ -117,7 +119,27 @@ def main():
                     "Uzasadnienie": cause
                 })
 
-                # Wykresy
+                wykresy[token] = (df, rsi, macd, signal, ema_s, ema_l)
+
+            except Exception as e:
+                results.append({"Token": token, "Ocena zakupu": f"Błąd: {str(e)}"})
+
+        df_results = pd.DataFrame(results)
+
+        def highlight(row):
+            color = "#c8e6c9" if row["Ocena zakupu"] == "TAK" else ("#fff9c4" if row["Ocena zakupu"] == "MOŻE" else "#ffcdd2")
+            return [
+                f"background-color: {color}; color: black; font-weight: bold" if col == "Ocena zakupu" else ""
+                for col in row.index
+            ]
+
+        st.subheader("📄 Podsumowanie")
+        st.dataframe(df_results.style.apply(highlight, axis=1))
+
+        tabs = st.tabs(list(wykresy.keys()))
+        for idx, token in enumerate(wykresy):
+            df, rsi, macd, signal, ema_s, ema_l = wykresy[token]
+            with tabs[idx]:
                 st.subheader(f"📈 {token}")
                 st.line_chart(df['price'], height=200)
 
@@ -142,18 +164,6 @@ def main():
                 ema_l.plot(ax=ax3, label='EMA26')
                 ax3.legend()
                 st.pyplot(fig3)
-
-            except Exception as e:
-                results.append({"Token": token, "Ocena zakupu": f"Błąd: {str(e)}"})
-
-        df_results = pd.DataFrame(results)
-
-        def highlight(row):
-            color = "#c8e6c9" if row["Ocena zakupu"] == "TAK" else ("#fff9c4" if row["Ocena zakupu"] == "MOŻe" else "#ffcdd2")
-            return [f"background-color: {color}" if col == "Ocena zakupu" else "" for col in row.index]
-
-        st.subheader("📄 Podsumowanie")
-        st.dataframe(df_results.style.apply(highlight, axis=1))
 
 if __name__ == "__main__":
     main()

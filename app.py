@@ -72,7 +72,7 @@ class ReportPDF(FPDF):
     def summary_table(self, summaries):
         self.add_page()
         self.set_font("DejaVu", "", 14)
-        self.cell(0, 10, "Podsumowanie sygnałów zakupu", ln=True, align="C")
+        self.cell(0, 10, "Podddddddsumowanie sygnałów zakupu", ln=True, align="C")
         self.ln(5)
         self.set_font("DejaVu", "", 12)
         self.set_fill_color(200, 200, 200)

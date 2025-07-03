@@ -29,18 +29,23 @@ def compute_confidence(rsi, macd, signal, price, ema_s, ema_l):
     if rsi < 30:
         score += 1
         reasons.append("RSI < 30")
+    elif rsi > 70:
+        reasons.append("RSI > 70 (sygnał sprzedaży)")
     else:
-        reasons.append("RSI >= 30")
+        reasons.append("RSI neutralne")
+
     if macd > signal:
         score += 1
         reasons.append("MACD > sygnał")
     else:
         reasons.append("MACD <= sygnał")
+
     if price > ema_s and price > ema_l:
         score += 1
         reasons.append("Cena > EMA12 i EMA26")
     else:
         reasons.append("Cena ≤ EMA12 lub EMA26")
+
     confidence = round(score / 3 * 100, 1)
     return confidence, ", ".join(reasons)
 
@@ -75,6 +80,7 @@ def get_token_list():
 
 # --- Główna logika ---
 def main():
+    st.set_page_config(layout="wide")
     st.title("🔎 Analiza Tokenów AI i Blockchain")
     tokeny = get_token_list()
     default_tokens = ["Bitcoin", "Ethereum", "Virtuals Protocol"]
@@ -84,7 +90,7 @@ def main():
 
     if st.button("📊 Pokaż raport"):
         results = []
-        wykresy = {}
+        charts = {}
 
         for token in selected:
             slug = tokeny[token]
@@ -94,7 +100,6 @@ def main():
                 macd, signal = compute_macd(df['price'])
                 ema_s, ema_l = compute_ema(df['price'])
 
-                # Synchronizacja indeksów
                 rsi.index = df.index
                 macd.index = df.index
                 signal.index = df.index
@@ -102,13 +107,21 @@ def main():
                 ema_l.index = df.index
 
                 price = df['price'].iloc[-1]
-                conf, cause = compute_confidence(rsi.iloc[-1], macd.iloc[-1], signal.iloc[-1], price, ema_s.iloc[-1], ema_l.iloc[-1])
+                rsi_value = rsi.iloc[-1]
+                conf, cause = compute_confidence(rsi_value, macd.iloc[-1], signal.iloc[-1], price, ema_s.iloc[-1], ema_l.iloc[-1])
 
-                decision = "TAK" if conf >= 66 else "MOŻE" if conf >= 33 else "NIE"
+                if rsi_value > 70:
+                    decision = "SPRZEDAJ"
+                elif conf >= 66:
+                    decision = "KUP"
+                elif conf >= 33:
+                    decision = "MOŻE"
+                else:
+                    decision = "NIE"
 
                 results.append({
                     "Token": token,
-                    "RSI": round(rsi.iloc[-1], 1),
+                    "RSI": round(rsi_value, 1),
                     "Ocena zakupu": decision,
                     "Cena": round(price, 2),
                     "MACD": round(macd.iloc[-1], 4),
@@ -119,51 +132,55 @@ def main():
                     "Uzasadnienie": cause
                 })
 
-                wykresy[token] = (df, rsi, macd, signal, ema_s, ema_l)
+                # Przygotuj wykresy
+                figs = []
+
+                fig1, ax1 = plt.subplots()
+                rsi.plot(ax=ax1)
+                ax1.axhline(30, color='red', linestyle='--')
+                ax1.axhline(70, color='green', linestyle='--')
+                ax1.set_title("RSI")
+                figs.append(fig1)
+
+                fig2, ax2 = plt.subplots()
+                macd.plot(ax=ax2, label='MACD')
+                signal.plot(ax=ax2, label='Sygnał')
+                ax2.legend()
+                ax2.set_title("MACD")
+                figs.append(fig2)
+
+                fig3, ax3 = plt.subplots()
+                df['price'].plot(ax=ax3, label='Cena')
+                ema_s.plot(ax=ax3, label='EMA12')
+                ema_l.plot(ax=ax3, label='EMA26')
+                ax3.legend()
+                ax3.set_title("EMA")
+                figs.append(fig3)
+
+                charts[token] = figs
 
             except Exception as e:
                 results.append({"Token": token, "Ocena zakupu": f"Błąd: {str(e)}"})
 
         df_results = pd.DataFrame(results)
 
-        def highlight(row):
-            color = "#c8e6c9" if row["Ocena zakupu"] == "TAK" else ("#fff9c4" if row["Ocena zakupu"] == "MOŻE" else "#ffcdd2")
-            return [
-                f"background-color: {color}; color: black; font-weight: bold" if col == "Ocena zakupu" else ""
-                for col in row.index
-            ]
+        def style_func(row):
+            color_map = {
+                "KUP": "#c8e6c9",
+                "MOŻE": "#fff9c4",
+                "NIE": "#ffcdd2",
+                "SPRZEDAJ": "#ffab91"
+            }
+            bg = color_map.get(row["Ocena zakupu"], "#ffffff")
+            return [f"background-color: {bg}; color: black; font-weight: bold" if col == "Ocena zakupu" else "" for col in row.index]
 
         st.subheader("📄 Podsumowanie")
-        st.dataframe(df_results.style.apply(highlight, axis=1))
+        st.dataframe(df_results.style.apply(style_func, axis=1), use_container_width=True)
 
-        tabs = st.tabs(list(wykresy.keys()))
-        for idx, token in enumerate(wykresy):
-            df, rsi, macd, signal, ema_s, ema_l = wykresy[token]
-            with tabs[idx]:
-                st.subheader(f"📈 {token}")
-                st.line_chart(df['price'], height=200)
-
-                st.write("### RSI")
-                fig1, ax1 = plt.subplots()
-                rsi.plot(ax=ax1)
-                ax1.axhline(30, color='red', linestyle='--')
-                ax1.axhline(70, color='green', linestyle='--')
-                st.pyplot(fig1)
-
-                st.write("### MACD")
-                fig2, ax2 = plt.subplots()
-                macd.plot(ax=ax2, label='MACD')
-                signal.plot(ax=ax2, label='Sygnał')
-                ax2.legend()
-                st.pyplot(fig2)
-
-                st.write("### EMA")
-                fig3, ax3 = plt.subplots()
-                df['price'].plot(ax=ax3, label='Cena')
-                ema_s.plot(ax=ax3, label='EMA12')
-                ema_l.plot(ax=ax3, label='EMA26')
-                ax3.legend()
-                st.pyplot(fig3)
+        for token in charts:
+            with st.expander(f"Wykresy: {token}"):
+                for fig in charts[token]:
+                    st.pyplot(fig)
 
 if __name__ == "__main__":
     main()

@@ -86,7 +86,7 @@ def main():
     default_tokens = ["Bitcoin", "Ethereum", "Virtuals Protocol"]
 
     selected = st.multiselect("Wybierz tokeny:", list(tokeny.keys()), default=default_tokens)
-    days = st.selectbox("Zakres czasowyddddddd (dni):", [30, 90, 180], index=1)
+    days = st.selectbox("Zakres czasowy (dni):", [30, 90, 180], index=1)
 
     if st.button("📊 Pokaż raport"):
         results = []

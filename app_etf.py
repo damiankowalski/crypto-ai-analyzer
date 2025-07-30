@@ -53,7 +53,7 @@ except Exception as e:
 # Reszta dashboardu (jak wcześniej)
 st.header("1. 🎯 Premia/Dyskonto ETF")
 st.markdown("""
-- [Coinglass – ETF Premium Tracker](https://www.coinglass.com/proshares-btc-premium)
+- [Coinglass – ETF Premium Tracker](https://www.coinglass.com/etf)
 - [GBTC.io – Grayscale BTC Premium](https://www.gbtc.io/)
 - [Yahoo Finance – ETF Quotes](https://finance.yahoo.com)
 """)

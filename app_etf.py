@@ -40,7 +40,7 @@ st.title("📊 Bitcoin ETF Dashboard z danymi na żywo")
 st.header("📈 Realny wolumen BTC – ostatnie 30 dni (dane z CoinMarketCap)")
 try:
     df_volume = get_spot_volume()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(df_volume["date"], df_volume["volume"], marker='o')
     ax.set_title("Wolumen spot BTC (USD)")
     ax.set_xlabel("Data")

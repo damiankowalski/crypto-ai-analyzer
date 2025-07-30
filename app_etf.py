@@ -64,9 +64,20 @@ try:
     metrics = get_global_metrics()
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("📊 Dominacja BTC", f"{metrics['btc_dominance']:.2f}%")
-    col2.metric("💰 Wolumen 24h", f"${metrics['total_volume_24h'] / 1e9:.2f}B")
-    col3.metric("🌎 Market Cap", f"${metrics['total_market_cap'] / 1e12:.2f}T")
+    col1.metric("📊 Dominacja BTC", 
+        f"{metrics['btc_dominance']:.2f}%" if metrics['btc_dominance'] else "Brak danych")
+    
+    col2.metric("💰 Wolumen 24h", 
+        f"${metrics['total_volume_24h'] / 1e9:.2f}B" if metrics['total_volume_24h'] else "Brak danych")
+    
+    col3.metric("🌎 Market Cap", 
+        f"${metrics['total_market_cap'] / 1e12:.2f}T" if metrics['total_market_cap'] else "Brak danych")
+    
+    if metrics['btc_market_cap_change_24h'] is not None:
+        st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
+    else:
+        st.caption("Zmiana kapitalizacji BTC 24h: Brak danych")
+
 
     st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
 except Exception as e:

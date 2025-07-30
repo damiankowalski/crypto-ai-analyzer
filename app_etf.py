@@ -1,147 +1,77 @@
 import streamlit as st
 import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
-import yfinance as yf
 
-# 🔑 Klucz API z CoinMarketCap
+# 🔑 API Key z CoinMarketCap
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
+HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
-# 🔄 Funkcja: Wolumen BTC
-def get_spot_volume():
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
-    parameters = {
-        "symbol": "BTC",
-        "convert": "USD",
-        "interval": "daily",
-        "count": 30,
+# 🔍 Funkcja: Dane BTC (quotes/latest)
+def get_btc_data():
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
+    params = {"symbol": "BTC", "convert": "USD"}
+    r = requests.get(url, headers=HEADERS, params=params)
+    data = r.json()["data"]["BTC"]
+    quote = data["quote"]["USD"]
+    return {
+        "price": quote["price"],
+        "volume_24h": quote["volume_24h"],
+        "percent_change_24h": quote["percent_change_24h"],
+        "market_cap": quote["market_cap"],
+        "circulating_supply": data.get("circulating_supply")
     }
-    headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
-    response = requests.get(url, headers=headers, params=parameters)
 
-    if response.status_code != 200:
-        raise Exception(f"Błąd API: {response.status_code} – {response.text}")
-
-    data = response.json()
-    if "data" not in data:
-        raise Exception("Brak pola 'data' w odpowiedzi API")
-
-    df = pd.DataFrame([{
-        "date": entry["timestamp"][:10],
-        "volume": entry["quote"]["USD"]["volume_24h"]
-    } for entry in data["data"]["quotes"]])
-
-    df["date"] = pd.to_datetime(df["date"])
-    return df
-
-# 🔄 Funkcja: Globalne metryki rynku
+# 🌐 Funkcja: Globalne metryki rynku
 def get_global_metrics():
     url = "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest"
-    headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise Exception(f"Błąd API global-metrics: {response.status_code} – {response.text}")
-
-    data = response.json()["data"]
-
+    r = requests.get(url, headers=HEADERS)
+    data = r.json()["data"]
     return {
-        "btc_dominance": data.get("btc_dominance"),
-        "total_volume_24h": data["quote"]["USD"].get("total_volume_24h"),
-        "total_market_cap": data["quote"]["USD"].get("total_market_cap"),
-        "btc_market_cap_change_24h": data["quote"]["USD"].get("market_cap_change_24h")
+        "btc_dominance": data["btc_dominance"],
+        "total_market_cap": data["quote"]["USD"]["total_market_cap"],
+        "total_volume_24h": data["quote"]["USD"]["total_volume_24h"],
+        "market_cap_change_24h": data["quote"]["USD"].get("market_cap_change_24h")
     }
 
-# 🌐 Interfejs
-st.set_page_config(page_title="Bitcoin ETF Dashboard", layout="wide")
-st.title("📊 Bitcoin ETF Dashboard z danymi na żywo")
-
-# 🌐 Sekcja: Globalne metryki
-st.header("🌐 Globalne metryki rynku krypto (z CoinMarketCap)")
-try:
-    metrics = get_global_metrics()
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("📊 Dominacja BTC", 
-        f"{metrics['btc_dominance']:.2f}%" if metrics['btc_dominance'] else "Brak danych")
-    
-    col2.metric("💰 Wolumen 24h", 
-        f"${metrics['total_volume_24h'] / 1e9:.2f}B" if metrics['total_volume_24h'] else "Brak danych")
-    
-    col3.metric("🌎 Market Cap", 
-        f"${metrics['total_market_cap'] / 1e12:.2f}T" if metrics['total_market_cap'] else "Brak danych")
-
-    if metrics['btc_market_cap_change_24h'] is not None:
-        st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
+# 🟢 Funkcja: Ocena trendu
+def get_signal(change, volume):
+    if change > 0 and volume > 20_000_000_000:
+        return "🟢 BYCZO – rośnie cena i wolumen"
+    elif change < 0 and volume > 20_000_000_000:
+        return "🔴 SPADKOWO – cena spada mimo wysokiego wolumenu"
     else:
-        st.caption("Zmiana kapitalizacji BTC 24h: Brak danych")
+        return "🟡 NEUTRALNIE"
 
-except Exception as e:
-    st.error(f"Nie udało się pobrać globalnych metryk: {e}")
-
-# 🔍 Sekcja: Wolumen spot BTC
-with st.expander("📈 Realny wolumen BTC – ostatnie 30 dni (kliknij, aby rozwinąć)"):
-    st.caption("Źródło: CoinMarketCap")
-    try:
-        df_volume = get_spot_volume()
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax.plot(df_volume["date"], df_volume["volume"], marker='o')
-        ax.set_title("Wolumen spot BTC (USD)")
-        ax.set_xlabel("Data")
-        ax.set_ylabel("Wolumen")
-        plt.xticks(rotation=45)
-        st.pyplot(fig, clear_figure=True)
-    except Exception as e:
-        st.error(f"Nie udało się pobrać danych: {e}")
-
-# 📉 Premia GBTC
-st.header("📉 Premia GBTC względem ceny BTC")
-
-def get_gbtc_premium():
-    btc = yf.download("BTC-USD", period="1mo", interval="1d")
-    gbtc = yf.download("GBTC", period="1mo", interval="1d")
-
-    if btc.empty or gbtc.empty:
-        raise Exception("Brak danych z Yahoo Finance (BTC lub GBTC)")
-
-    df = pd.concat([btc["Close"], gbtc["Close"]], axis=1)
-    df.columns = ["BTC", "GBTC"]
-    df.dropna(inplace=True)
-
-    df["Premium"] = (df["GBTC"] / df["BTC"] - 1) * 100
-    return df
+# 🚀 Streamlit
+st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
+st.title("📊 BTC Market Overview (CMC API – Hobbyist)")
 
 try:
-    df_premium = get_gbtc_premium()
-    fig2, ax2 = plt.subplots(figsize=(6, 3))
-    ax2.plot(df_premium.index, df_premium["Premium"], color="orange")
-    ax2.axhline(0, linestyle='--', color='gray')
-    ax2.set_title("Premia/Dyskonto GBTC (%)")
-    ax2.set_ylabel("Premia [%]")
-    ax2.set_xlabel("Data")
-    plt.xticks(rotation=45)
-    st.pyplot(fig2, clear_figure=True)
+    btc = get_btc_data()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
+    col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
+    col3.metric("📊 Market Cap", f"${btc['market_cap'] / 1e9:.2f}B")
+
+    st.metric("🔁 Wolumen 24h", f"${btc['volume_24h'] / 1e9:.2f}B")
+    st.metric("🔄 Obieg BTC", f"{btc['circulating_supply']:.0f} BTC")
+
+    signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
+    st.subheader("📈 Ocena sytuacji")
+    st.success(signal) if signal.startswith("🟢") else st.warning(signal) if signal.startswith("🟡") else st.error(signal)
+
 except Exception as e:
-    st.error(f"Nie udało się pobrać premii GBTC: {e}")
+    st.error(f"Błąd podczas pobierania danych BTC: {e}")
 
-# 📘 Reszta dashboardu (linki zewnętrzne i interpretacja)
-st.header("1. 🎯 Premia/Dyskonto ETF")
-st.markdown("""
-- [Coinglass – ETF Premium Tracker](https://www.coinglass.com/proshares-btc-premium)
-- [GBTC.io – Grayscale BTC Premium](https://www.gbtc.io/)
-- [Yahoo Finance – ETF Quotes](https://finance.yahoo.com)
-""")
+st.divider()
+st.header("🌍 Globalne metryki rynku")
+try:
+    global_data = get_global_metrics()
+    col1, col2 = st.columns(2)
+    col1.metric("🪙 Dominacja BTC", f"{global_data['btc_dominance']:.2f}%")
+    col2.metric("🌐 Cały rynek (market cap)", f"${global_data['total_market_cap'] / 1e12:.2f}T")
+    st.metric("🔁 Wolumen rynku 24h", f"${global_data['total_volume_24h'] / 1e9:.2f}B")
 
-st.header("2. 🏦 Aktywność AP (ETF flows)")
-st.markdown("""
-- [Coinglass – ETF Flow Tracker](https://www.coinglass.com/etf)
-- [Blockworks – ETF Tracker](https://blockworks.co/etf-tracker)
-""")
-
-st.header("📌 Wskazówki interpretacyjne")
-st.markdown("""
-- **Dodatnia premia ETF** ➜ większy popyt przez instytucje.
-- **Aktywność AP** ➜ napływ kapitału.
-- **Wzrost wolumenu spot** ➜ realny popyt.
-""")
+    if global_data['market_cap_change_24h']:
+        st.caption(f"Zmiana kapitalizacji rynku 24h: {global_data['market_cap_change_24h']:.2f} USD")
+except Exception as e:
+    st.error(f"Błąd podczas pobierania metryk globalnych: {e}")

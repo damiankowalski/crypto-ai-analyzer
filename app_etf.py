@@ -57,7 +57,12 @@ try:
 
     signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
     st.subheader("📈 Ocena sytuacji")
-    st.success(signal) if signal.startswith("🟢") else st.warning(signal) if signal.startswith("🟡") else st.error(signal)
+    if signal.startswith("🟢"):
+        st.success(signal)
+    elif signal.startswith("🟡"):
+        st.warning(signal)
+    else:
+        st.error(signal)
 
 except Exception as e:
     st.error(f"Błąd podczas pobierania danych BTC: {e}")

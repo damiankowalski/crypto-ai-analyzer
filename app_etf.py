@@ -36,7 +36,6 @@ def get_spot_volume():
     return df
 
 # 🔄 Funkcja: Globalne metryki rynku
-
 def get_global_metrics():
     url = "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest"
     headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
@@ -72,11 +71,11 @@ try:
     
     col3.metric("🌎 Market Cap", 
         f"${metrics['total_market_cap'] / 1e12:.2f}T" if metrics['total_market_cap'] else "Brak danych")
-    
-if metrics['btc_market_cap_change_24h'] is not None:
-    st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
-else:
-    st.caption("Zmiana kapitalizacji BTC 24h: Brak danych")
+
+    if metrics['btc_market_cap_change_24h'] is not None:
+        st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
+    else:
+        st.caption("Zmiana kapitalizacji BTC 24h: Brak danych")
 
 except Exception as e:
     st.error(f"Nie udało się pobrać globalnych metryk: {e}")

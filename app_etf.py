@@ -8,23 +8,28 @@ from datetime import datetime
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 
 def get_spot_volume():
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical"
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
     parameters = {
         "symbol": "BTC",
         "convert": "USD",
-        "time_period": "daily",
-        "time_start": (pd.Timestamp.now() - pd.Timedelta(days=30)).strftime("%Y-%m-%d"),
-        "time_end": pd.Timestamp.now().strftime("%Y-%m-%d")
+        "interval": "daily",
+        "count": 30,
     }
     headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
     response = requests.get(url, headers=headers, params=parameters)
-    data = response.json()
 
-    ohlcv = data["data"]["quotes"]
+    if response.status_code != 200:
+        raise Exception(f"Błąd API: {response.status_code} – {response.text}")
+
+    data = response.json()
+    if "data" not in data:
+        raise Exception("Brak pola 'data' w odpowiedzi API")
+
     df = pd.DataFrame([{
-        "date": q["time_open"][:10],
-        "volume": q["quote"]["USD"]["volume"]
-    } for q in ohlcv])
+        "date": entry["timestamp"][:10],
+        "volume": entry["quote"]["USD"]["volume_24h"]
+    } for entry in data["data"]["quotes"]])
+
     df["date"] = pd.to_datetime(df["date"])
     return df
 

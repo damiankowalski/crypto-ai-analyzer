@@ -5,17 +5,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
 
-# 💄 Stylizacja i tooltipy
-st.markdown("""
-<style>
-    .metric-label > div { font-size: 14px !important; }
-    .tooltip {
-        border-bottom: 1px dotted #999;
-        cursor: help;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
@@ -101,12 +90,12 @@ try:
     col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
     col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
     col3.metric("📊 Market Cap", f"${btc['market_cap'] / 1e9:.2f}B")
-    st.caption("Market Cap: Wartość wszystkich BTC w obiegu")
+    st.help("Market Cap to całkowita wartość wszystkich BTC w obiegu.")
 
     col4, col5 = st.columns(2)
     col4.metric("🔁 Wolumen 24h", f"${btc['volume_24h'] / 1e9:.2f}B")
     col5.metric("🔄 Obieg BTC", f"{btc['circulating_supply']:.0f} BTC")
-    st.caption("Obieg BTC: liczba BTC będąca w obiegu (circulating supply)")
+    st.help("Obieg BTC (circulating supply) to liczba BTC aktualnie dostępnych na rynku.")
 
     st.subheader("📈 Ocena sytuacji")
     signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
@@ -116,7 +105,7 @@ try:
         st.warning(signal)
     else:
         st.error(signal)
-    st.caption("Sygnał: BYCZO = wzrost ceny i wolumenu, SPADKOWO = spadek przy dużym wolumenie")
+    st.help("Sygnał BYCZO oznacza jednoczesny wzrost ceny i wolumenu – potencjalny trend wzrostowy.")
 
     col6, col7 = st.columns(2)
     col6.metric("📆 Zmiana 7 dni", f"{price_7d_change:.2f}%")
@@ -134,6 +123,7 @@ try:
     col1.metric("🪙 Dominacja BTC", f"{global_data['btc_dominance']:.2f}%")
     col2.metric("🌐 Market Cap", f"${global_data['total_market_cap'] / 1e12:.2f}T")
     st.metric("🔁 Wolumen rynku 24h", f"${global_data['total_volume_24h'] / 1e9:.2f}B")
+    st.help("Dominacja BTC to udział Bitcoina w całym rynku kryptowalut.")
 
     if global_data['market_cap_change_24h']:
         st.caption(f"Zmiana kapitalizacji rynku 24h: {global_data['market_cap_change_24h']:.2f} USD")

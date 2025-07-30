@@ -39,16 +39,18 @@ st.title("📊 Bitcoin ETF Dashboard z danymi na żywo")
 
 with st.expander("📈 Realny wolumen BTC – ostatnie 30 dni (kliknij, aby rozwinąć)"):
     st.caption("Źródło: CoinMarketCap")
-    df_volume = get_spot_volume()
-    fig, ax = plt.subplots(figsize=(6, 3))
-    ax.plot(df_volume["date"], df_volume["volume"], marker='o')
-    ax.set_title("Wolumen spot BTC (USD)")
-    ax.set_xlabel("Data")
-    ax.set_ylabel("Wolumen")
-    plt.xticks(rotation=45)
-    st.pyplot(fig, clear_figure=True)
-except Exception as e:
-    st.error(f"Nie udało się pobrać danych: {e}")
+    try:
+        df_volume = get_spot_volume()
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.plot(df_volume["date"], df_volume["volume"], marker='o')
+        ax.set_title("Wolumen spot BTC (USD)")
+        ax.set_xlabel("Data")
+        ax.set_ylabel("Wolumen")
+        plt.xticks(rotation=45)
+        st.pyplot(fig, clear_figure=True)
+    except Exception as e:
+        st.error(f"Nie udało się pobrać danych: {e}")
+
 
 
 # Reszta dashboardu (jak wcześniej)

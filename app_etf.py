@@ -3,10 +3,12 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+import yfinance as yf
 
-# 🔑 Wpisz tu swój klucz API z CoinMarketCap
+# 🔑 Klucz API z CoinMarketCap
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 
+# 🔄 Funkcja: Wolumen BTC
 def get_spot_volume():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
     parameters = {
@@ -33,10 +35,45 @@ def get_spot_volume():
     df["date"] = pd.to_datetime(df["date"])
     return df
 
+# 🔄 Funkcja: Globalne metryki rynku
+
+def get_global_metrics():
+    url = "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest"
+    headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        raise Exception(f"Błąd API global-metrics: {response.status_code} – {response.text}")
+
+    data = response.json()["data"]
+
+    return {
+        "btc_dominance": data["btc_dominance"],
+        "total_volume_24h": data["quote"]["USD"]["total_volume_24h"],
+        "total_market_cap": data["quote"]["USD"]["total_market_cap"],
+        "btc_market_cap": data["btc_market_cap"],
+        "btc_market_cap_change_24h": data["quote"]["USD"]["market_cap_change_24h"]
+    }
+
 # 🌐 Interfejs
 st.set_page_config(page_title="Bitcoin ETF Dashboard", layout="wide")
 st.title("📊 Bitcoin ETF Dashboard z danymi na żywo")
 
+# 🌐 Sekcja: Globalne metryki
+st.header("🌐 Globalne metryki rynku krypto (z CoinMarketCap)")
+try:
+    metrics = get_global_metrics()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📊 Dominacja BTC", f"{metrics['btc_dominance']:.2f}%")
+    col2.metric("💰 Wolumen 24h", f"${metrics['total_volume_24h'] / 1e9:.2f}B")
+    col3.metric("🌎 Market Cap", f"${metrics['total_market_cap'] / 1e12:.2f}T")
+
+    st.caption(f"Zmiana kapitalizacji BTC 24h: {metrics['btc_market_cap_change_24h']:.2f} USD")
+except Exception as e:
+    st.error(f"Nie udało się pobrać globalnych metryk: {e}")
+
+# 🔍 Sekcja: Wolumen spot BTC
 with st.expander("📈 Realny wolumen BTC – ostatnie 30 dni (kliknij, aby rozwinąć)"):
     st.caption("Źródło: CoinMarketCap")
     try:
@@ -51,30 +88,8 @@ with st.expander("📈 Realny wolumen BTC – ostatnie 30 dni (kliknij, aby rozw
     except Exception as e:
         st.error(f"Nie udało się pobrać danych: {e}")
 
-
-
-# Reszta dashboardu (jak wcześniej)
-st.header("1. 🎯 Premia/Dyskonto ETF")
-st.markdown("""
-- [Coinglass – ETF Premium Tracker](https://www.coinglass.com/etf)
-- [GBTC.io – Grayscale BTC Premium](https://www.gbtc.io/)
-- [Yahoo Finance – ETF Quotes](https://finance.yahoo.com)
-""")
-
-st.header("2. 🏦 Aktywność AP (ETF flows)")
-st.markdown("""
-- [Coinglass – ETF Flow Tracker](https://www.coinglass.com/etf)
-- [Blockworks – ETF Tracker](https://blockworks.co/etf-tracker)
-""")
-
-st.header("📌 Wskazówki interpretacyjne")
-st.markdown("""
-- **Dodatnia premia ETF** ➜ większy popyt przez instytucje.
-- **Aktywność AP** ➜ napływ kapitału.
-- **Wzrost wolumenu spot** ➜ realny popyt.
-""")
-
-import yfinance as yf
+# 📉 Premia GBTC
+st.header("📉 Premia GBTC względem ceny BTC")
 
 def get_gbtc_premium():
     btc = yf.download("BTC-USD", period="1mo", interval="1d")
@@ -90,9 +105,6 @@ def get_gbtc_premium():
     df["Premium"] = (df["GBTC"] / df["BTC"] - 1) * 100
     return df
 
-
-st.header("📉 Premia GBTC względem ceny BTC")
-
 try:
     df_premium = get_gbtc_premium()
     fig2, ax2 = plt.subplots(figsize=(6, 3))
@@ -106,3 +118,10 @@ try:
 except Exception as e:
     st.error(f"Nie udało się pobrać premii GBTC: {e}")
 
+# 📌 Informacje dodatkowe
+st.header("📘 Wskazówki interpretacyjne")
+st.markdown("""
+- **Dodatnia premia ETF** ➜ większy popyt przez instytucje.
+- **Aktywność AP** ➜ napływ kapitału.
+- **Wzrost wolumenu spot** ➜ realny popyt.
+""")

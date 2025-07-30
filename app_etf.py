@@ -3,6 +3,17 @@ import requests
 import pandas as pd
 from datetime import datetime
 
+st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
+
+# 💄 Stylizacja
+st.markdown("""
+<style>
+    .big-font { font-size:24px !important; }
+    .small-font { font-size:14px !important; }
+    .metric-label > div { font-size: 14px !important; }
+</style>
+""", unsafe_allow_html=True)
+
 # 🔑 API Key z CoinMarketCap
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
@@ -62,8 +73,7 @@ def get_signal(change, volume):
     else:
         return "🟡 NEUTRALNIE"
 
-# 🚀 Streamlit
-st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
+# 🚀 Dashboard główny
 st.title("📊 BTC Market Overview (CMC API – Hobbyist)")
 
 try:
@@ -77,7 +87,6 @@ try:
     avg_volume_30d = df["volume"].mean()
     volume_trend = "🔼 rośnie" if avg_volume_3d > avg_volume_30d else "🔽 spada"
 
-    # 🧾 Dane ogólne BTC
     col1, col2, col3 = st.columns(3)
     col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
     col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
@@ -87,7 +96,6 @@ try:
     col4.metric("🔁 Wolumen 24h", f"${btc['volume_24h'] / 1e9:.2f}B")
     col5.metric("🔄 Obieg BTC", f"{btc['circulating_supply']:.0f} BTC")
 
-    # 📈 Trend
     st.subheader("📈 Ocena sytuacji")
     signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
     if signal.startswith("🟢"):
@@ -111,10 +119,23 @@ try:
     global_data = get_global_metrics()
     col1, col2 = st.columns(2)
     col1.metric("🪙 Dominacja BTC", f"{global_data['btc_dominance']:.2f}%")
-    col2.metric("🌐 Cały rynek (market cap)", f"${global_data['total_market_cap'] / 1e12:.2f}T")
+    col2.metric("🌐 Market Cap", f"${global_data['total_market_cap'] / 1e12:.2f}T")
     st.metric("🔁 Wolumen rynku 24h", f"${global_data['total_volume_24h'] / 1e9:.2f}B")
 
     if global_data['market_cap_change_24h']:
         st.caption(f"Zmiana kapitalizacji rynku 24h: {global_data['market_cap_change_24h']:.2f} USD")
 except Exception as e:
     st.error(f"Błąd podczas pobierania metryk globalnych: {e}")
+
+st.divider()
+st.header("📌 Premia ETF i aktywność AP")
+st.markdown("""
+- 🔗 [Coinglass – ETF Premium Tracker](https://www.coinglass.com/etf)
+- 🔗 [Blockworks – ETF Flows](https://blockworks.co/etf-tracker)
+
+🧭 Obserwuj:
+- Czy ETF-y mają premię czy dyskonto względem ceny BTC
+- Czy fundusze typu IBIT, GBTC mają napływy (tworzenie jednostek przez AP)
+- Przy dodatniej premii i napływie – może być to sygnał byczy 🟢
+- Przy odpływach i ujemnej premii – może to sugerować presję sprzedażową 🔴
+""")

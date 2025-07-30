@@ -90,12 +90,12 @@ try:
     col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
     col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
     col3.metric("📊 Market Cap", f"${btc['market_cap'] / 1e9:.2f}B")
-    st.help("Market Cap to całkowita wartość wszystkich BTC w obiegu.")
+    st.caption("ℹ️ Market Cap to całkowita wartość wszystkich BTC w obiegu.")
 
     col4, col5 = st.columns(2)
     col4.metric("🔁 Wolumen 24h", f"${btc['volume_24h'] / 1e9:.2f}B")
     col5.metric("🔄 Obieg BTC", f"{btc['circulating_supply']:.0f} BTC")
-    st.help("Obieg BTC (circulating supply) to liczba BTC aktualnie dostępnych na rynku.")
+    st.caption("ℹ️ Obieg BTC (circulating supply) to liczba BTC aktualnie dostępnych na rynku.")
 
     st.subheader("📈 Ocena sytuacji")
     signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
@@ -105,7 +105,7 @@ try:
         st.warning(signal)
     else:
         st.error(signal)
-    st.help("Sygnał BYCZO oznacza jednoczesny wzrost ceny i wolumenu – potencjalny trend wzrostowy.")
+    st.caption("ℹ️ Sygnał BYCZO oznacza wzrost ceny i wolumenu – potencjalny trend wzrostowy.")
 
     col6, col7 = st.columns(2)
     col6.metric("📆 Zmiana 7 dni", f"{price_7d_change:.2f}%")
@@ -123,7 +123,7 @@ try:
     col1.metric("🪙 Dominacja BTC", f"{global_data['btc_dominance']:.2f}%")
     col2.metric("🌐 Market Cap", f"${global_data['total_market_cap'] / 1e12:.2f}T")
     st.metric("🔁 Wolumen rynku 24h", f"${global_data['total_volume_24h'] / 1e9:.2f}B")
-    st.help("Dominacja BTC to udział Bitcoina w całym rynku kryptowalut.")
+    st.caption("ℹ️ Dominacja BTC to udział Bitcoina w całym rynku kryptowalut.")
 
     if global_data['market_cap_change_24h']:
         st.caption(f"Zmiana kapitalizacji rynku 24h: {global_data['market_cap_change_24h']:.2f} USD")

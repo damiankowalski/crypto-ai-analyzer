@@ -47,7 +47,6 @@ try:
     ax.set_ylabel("Wolumen")
     plt.xticks(rotation=45)
     st.pyplot(fig, clear_figure=True)
-    st.markdown(
 except Exception as e:
     st.error(f"Nie udało się pobrać danych: {e}")
 

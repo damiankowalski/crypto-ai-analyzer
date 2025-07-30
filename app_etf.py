@@ -48,9 +48,6 @@ try:
     plt.xticks(rotation=45)
     st.pyplot(fig, clear_figure=True)
     st.markdown(
-    """<style>.element-container:has(figure) {max-height: 300px !important;}</style>""",
-    unsafe_allow_html=True
-)
 except Exception as e:
     st.error(f"Nie udało się pobrać danych: {e}")
 

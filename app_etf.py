@@ -40,13 +40,13 @@ st.title("📊 Bitcoin ETF Dashboard z danymi na żywo")
 st.header("📈 Realny wolumen BTC – ostatnie 30 dni (dane z CoinMarketCap)")
 try:
     df_volume = get_spot_volume()
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(6, 3))  # mniejszy wykres
     ax.plot(df_volume["date"], df_volume["volume"], marker='o')
     ax.set_title("Wolumen spot BTC (USD)")
     ax.set_xlabel("Data")
     ax.set_ylabel("Wolumen")
     plt.xticks(rotation=45)
-    st.pyplot(fig)
+    st.pyplot(fig, clear_figure=True)
 except Exception as e:
     st.error(f"Nie udało się pobrać danych: {e}")
 

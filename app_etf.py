@@ -71,3 +71,32 @@ st.markdown("""
 - **Aktywność AP** ➜ napływ kapitału.
 - **Wzrost wolumenu spot** ➜ realny popyt.
 """)
+
+import yfinance as yf
+
+def get_gbtc_premium():
+    btc = yf.download("BTC-USD", period="1mo", interval="1d")
+    gbtc = yf.download("GBTC", period="1mo", interval="1d")
+
+    df = pd.DataFrame({
+        "BTC": btc["Close"],
+        "GBTC": gbtc["Close"]
+    }).dropna()
+    df["Premium"] = (df["GBTC"] / df["BTC"] - 1) * 100
+    return df
+
+st.header("📉 Premia GBTC względem ceny BTC")
+
+try:
+    df_premium = get_gbtc_premium()
+    fig2, ax2 = plt.subplots(figsize=(6, 3))
+    ax2.plot(df_premium.index, df_premium["Premium"], color="orange")
+    ax2.axhline(0, linestyle='--', color='gray')
+    ax2.set_title("Premia/Dyskonto GBTC (%)")
+    ax2.set_ylabel("Premia [%]")
+    ax2.set_xlabel("Data")
+    plt.xticks(rotation=45)
+    st.pyplot(fig2, clear_figure=True)
+except Exception as e:
+    st.error(f"Nie udało się pobrać premii GBTC: {e}")
+

@@ -14,11 +14,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🔑 API Key z CoinMarketCap
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
-# 🔍 Dane bieżące BTC
+# === API ===
 def get_btc_data():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
     params = {"symbol": "BTC", "convert": "USD"}
@@ -33,15 +32,9 @@ def get_btc_data():
         "circulating_supply": data.get("circulating_supply")
     }
 
-# 🔄 Dane historyczne 30 dni (cena i wolumen)
 def get_btc_history():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
-    params = {
-        "symbol": "BTC",
-        "convert": "USD",
-        "interval": "daily",
-        "count": 30,
-    }
+    params = {"symbol": "BTC", "convert": "USD", "interval": "daily", "count": 30}
     r = requests.get(url, headers=HEADERS, params=params)
     quotes = r.json()["data"]["quotes"]
     df = pd.DataFrame([{
@@ -52,7 +45,6 @@ def get_btc_history():
     df["date"] = pd.to_datetime(df["date"])
     return df
 
-# 🌐 Metryki globalne rynku
 def get_global_metrics():
     url = "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest"
     r = requests.get(url, headers=HEADERS)
@@ -64,7 +56,23 @@ def get_global_metrics():
         "market_cap_change_24h": data["quote"]["USD"].get("market_cap_change_24h")
     }
 
-# 🔎 Logika oceny sytuacji
+def get_tokens(symbols):
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
+    params = {"symbol": ",".join(symbols), "convert": "USD"}
+    r = requests.get(url, headers=HEADERS, params=params)
+    data = r.json().get("data", {})
+    result = []
+    for sym, info in data.items():
+        q = info["quote"]["USD"]
+        result.append({
+            "symbol": sym,
+            "price": q["price"],
+            "change24h": q["percent_change_24h"],
+            "volume24h": q["volume_24h"]
+        })
+    return result
+
+# === Logika ===
 def get_signal(change, volume):
     if change > 0 and volume > 20_000_000_000:
         return "🟢 BYCZO – rośnie cena i wolumen"
@@ -73,7 +81,7 @@ def get_signal(change, volume):
     else:
         return "🟡 NEUTRALNIE"
 
-# 🚀 Dashboard główny
+# === DASHBOARD ===
 st.title("📊 BTC Market Overview (CMC API – Hobbyist)")
 
 try:
@@ -82,11 +90,11 @@ try:
 
     price_7d_change = ((df.iloc[-1]["price"] - df.iloc[-7]["price"]) / df.iloc[-7]["price"]) * 100
     price_30d_change = ((df.iloc[-1]["price"] - df.iloc[0]["price"]) / df.iloc[0]["price"]) * 100
-
     avg_volume_3d = df.tail(3)["volume"].mean()
     avg_volume_30d = df["volume"].mean()
     volume_trend = "🔼 rośnie" if avg_volume_3d > avg_volume_30d else "🔽 spada"
 
+    st.subheader("📌 Dane BTC")
     col1, col2, col3 = st.columns(3)
     col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
     col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
@@ -126,6 +134,22 @@ try:
         st.caption(f"Zmiana kapitalizacji rynku 24h: {global_data['market_cap_change_24h']:.2f} USD")
 except Exception as e:
     st.error(f"Błąd podczas pobierania metryk globalnych: {e}")
+
+st.divider()
+st.header("🔎 Porównanie tokenów wg kategorii")
+
+# Przykładowe tokeny
+tokens_AI = ["FET", "INJ", "GRT"]
+tokens_DeFi = ["UNI", "AAVE", "COMP"]
+
+for category, tickers in [("AI & Big Data", tokens_AI), ("DeFi", tokens_DeFi)]:
+    try:
+        data = get_tokens(tickers)
+        df = pd.DataFrame(data)
+        st.subheader(f"{category}")
+        st.table(df)
+    except Exception as e:
+        st.warning(f"Błąd przy pobieraniu danych {category}: {e}")
 
 st.divider()
 st.header("📌 Premia ETF i aktywność AP")

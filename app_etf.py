@@ -48,11 +48,10 @@ def get_global_metrics():
     data = response.json()["data"]
 
     return {
-        "btc_dominance": data["btc_dominance"],
-        "total_volume_24h": data["quote"]["USD"]["total_volume_24h"],
-        "total_market_cap": data["quote"]["USD"]["total_market_cap"],
-        "btc_market_cap": data["btc_market_cap"],
-        "btc_market_cap_change_24h": data["quote"]["USD"]["market_cap_change_24h"]
+        "btc_dominance": data.get("btc_dominance"),
+        "total_volume_24h": data["quote"]["USD"].get("total_volume_24h"),
+        "total_market_cap": data["quote"]["USD"].get("total_market_cap"),
+        "btc_market_cap_change_24h": data["quote"]["USD"].get("market_cap_change_24h")
     }
 
 # 🌐 Interfejs
@@ -118,8 +117,21 @@ try:
 except Exception as e:
     st.error(f"Nie udało się pobrać premii GBTC: {e}")
 
-# 📌 Informacje dodatkowe
-st.header("📘 Wskazówki interpretacyjne")
+# 📘 Reszta dashboardu (linki zewnętrzne i interpretacja)
+st.header("1. 🎯 Premia/Dyskonto ETF")
+st.markdown("""
+- [Coinglass – ETF Premium Tracker](https://www.coinglass.com/proshares-btc-premium)
+- [GBTC.io – Grayscale BTC Premium](https://www.gbtc.io/)
+- [Yahoo Finance – ETF Quotes](https://finance.yahoo.com)
+""")
+
+st.header("2. 🏦 Aktywność AP (ETF flows)")
+st.markdown("""
+- [Coinglass – ETF Flow Tracker](https://www.coinglass.com/etf)
+- [Blockworks – ETF Tracker](https://blockworks.co/etf-tracker)
+""")
+
+st.header("📌 Wskazówki interpretacyjne")
 st.markdown("""
 - **Dodatnia premia ETF** ➜ większy popyt przez instytucje.
 - **Aktywność AP** ➜ napływ kapitału.

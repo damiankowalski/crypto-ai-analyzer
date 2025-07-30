@@ -80,12 +80,16 @@ def get_gbtc_premium():
     btc = yf.download("BTC-USD", period="1mo", interval="1d")
     gbtc = yf.download("GBTC", period="1mo", interval="1d")
 
-    df = pd.DataFrame({
-        "BTC": btc["Close"],
-        "GBTC": gbtc["Close"]
-    }).dropna()
+    if btc.empty or gbtc.empty:
+        raise Exception("Brak danych z Yahoo Finance (BTC lub GBTC)")
+
+    df = pd.concat([btc["Close"], gbtc["Close"]], axis=1)
+    df.columns = ["BTC", "GBTC"]
+    df.dropna(inplace=True)
+
     df["Premium"] = (df["GBTC"] / df["BTC"] - 1) * 100
     return df
+
 
 st.header("📉 Premia GBTC względem ceny BTC")
 

@@ -47,6 +47,8 @@ with st.expander("📈 Realny wolumen BTC – ostatnie 30 dni (kliknij, aby rozw
     ax.set_ylabel("Wolumen")
     plt.xticks(rotation=45)
     st.pyplot(fig, clear_figure=True)
+except Exception as e:
+    st.error(f"Nie udało się pobrać danych: {e}")
 
 
 # Reszta dashboardu (jak wcześniej)

@@ -5,12 +5,14 @@ from datetime import datetime
 
 st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
 
-# 💄 Stylizacja
+# 💄 Stylizacja i tooltipy
 st.markdown("""
 <style>
-    .big-font { font-size:24px !important; }
-    .small-font { font-size:14px !important; }
     .metric-label > div { font-size: 14px !important; }
+    .tooltip {
+        border-bottom: 1px dotted #999;
+        cursor: help;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,10 +101,12 @@ try:
     col1.metric("💰 Cena BTC", f"${btc['price']:.2f}")
     col2.metric("📉 Zmiana 24h", f"{btc['percent_change_24h']:.2f}%")
     col3.metric("📊 Market Cap", f"${btc['market_cap'] / 1e9:.2f}B")
+    st.caption("Market Cap: Wartość wszystkich BTC w obiegu")
 
     col4, col5 = st.columns(2)
     col4.metric("🔁 Wolumen 24h", f"${btc['volume_24h'] / 1e9:.2f}B")
     col5.metric("🔄 Obieg BTC", f"{btc['circulating_supply']:.0f} BTC")
+    st.caption("Obieg BTC: liczba BTC będąca w obiegu (circulating supply)")
 
     st.subheader("📈 Ocena sytuacji")
     signal = get_signal(btc['percent_change_24h'], btc['volume_24h'])
@@ -112,6 +116,7 @@ try:
         st.warning(signal)
     else:
         st.error(signal)
+    st.caption("Sygnał: BYCZO = wzrost ceny i wolumenu, SPADKOWO = spadek przy dużym wolumenie")
 
     col6, col7 = st.columns(2)
     col6.metric("📆 Zmiana 7 dni", f"{price_7d_change:.2f}%")
@@ -138,7 +143,6 @@ except Exception as e:
 st.divider()
 st.header("🔎 Porównanie tokenów wg kategorii")
 
-# Przykładowe tokeny
 tokens_AI = ["FET", "INJ", "GRT"]
 tokens_DeFi = ["UNI", "AAVE", "COMP"]
 

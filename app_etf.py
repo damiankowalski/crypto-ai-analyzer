@@ -3,8 +3,9 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-# Minimalny CSS: mniejsze czcionki i lepszy wygląd na telefonie
 st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
+
+# CSS: mniejsze czcionki i responsywność
 st.markdown("""
 <style>
     h1, h2, h3, h4, .stText, .stMetric label, .stMarkdown {
@@ -28,7 +29,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# API CMC
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
@@ -78,7 +78,7 @@ def get_signal(change, volume):
     else:
         return "NEUTRALNIE"
 
-# UI
+# Sekcja główna – dane BTC i ocena sytuacji
 st.title("BTC Market Overview (CMC API – Hobbyist)")
 
 try:
@@ -133,3 +133,46 @@ try:
         st.caption(f"Zmiana kapitalizacji 24h: {global_data['market_cap_change_24h']:.2f} USD")
 except Exception as e:
     st.error(f"Błąd metryk globalnych: {e}")
+
+st.divider()
+st.header("Porównanie wybranych tokenów")
+
+available_tokens = [
+    "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "AVAX", "DOT",
+    "FET", "INJ", "GRT", "RNDR", "AAVE", "UNI", "MKR"
+]
+
+selected = st.multiselect("Wybierz tokeny do porównania:", available_tokens, default=["BTC", "ETH", "SOL"])
+
+def fetch_quote(symbols):
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
+    params = {"symbol": ",".join(symbols), "convert": "USD"}
+    r = requests.get(url, headers=HEADERS, params=params)
+    return r.json()
+
+if selected:
+    try:
+        data = fetch_quote(selected)
+        tokens = []
+        for symbol in selected:
+            info = data["data"][symbol]
+            quote = info["quote"]["USD"]
+            tokens.append({
+                "Token": symbol,
+                "Cena (USD)": round(quote["price"], 2),
+                "Zmiana 24h (%)": round(quote["percent_change_24h"], 2),
+                "Wolumen 24h (mln)": round(quote["volume_24h"] / 1e6, 2),
+                "Market Cap (mld)": round(quote["market_cap"] / 1e9, 2)
+            })
+
+        df = pd.DataFrame(tokens)
+        st.dataframe(df.style.format({
+            "Cena (USD)": "${:,.2f}",
+            "Zmiana 24h (%)": "{:+.2f}%",
+            "Wolumen 24h (mln)": "{:.2f}M",
+            "Market Cap (mld)": "{:.2f}B"
+        }), use_container_width=True)
+    except Exception as e:
+        st.error(f"Błąd pobierania danych: {e}")
+else:
+    st.info("Wybierz przynajmniej jeden token z listy powyżej.")

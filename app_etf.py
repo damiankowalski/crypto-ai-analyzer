@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API CMC
-CMC_API_KEY = "tutaj_wklej_swoj_klucz"
+CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
 def get_btc_data():

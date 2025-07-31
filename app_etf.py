@@ -2,7 +2,7 @@ import streamlit as st import requests import pandas as pd from datetime import 
 
 st.set_page_config(page_title="BTC Dashboard - CMC API", layout="wide")
 
-💡 Minimalny CSS dla mniejszych fontów i lepszej responsywności
+Minimalny CSS dla mniejszych fontów i lepszej responsywności
 
 st.markdown("""
 

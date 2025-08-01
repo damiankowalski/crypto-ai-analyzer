@@ -21,13 +21,14 @@ def get_btc_data():
     return data["data"]
 
 @st.cache_data(show_spinner=False)
-def get_sentiment():
+def get_sentiment(btc):
+    volume = btc['quote']['USD']['volume_24h']
     return {
-        "RSI(14)": 31.5,
-        "MACD": -676,
-        "Volume_24h": 22.1e9,
+        "RSI(14)": 49.8,  # Placeholder
+        "MACD": -123,    # Placeholder
+        "Volume_24h": volume,
         "EMA_trend": "spadkowy",
-        "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
+        "Interpretacja": f"Wolumen 24h: {volume/1e9:.2f} mld USD. Pozostałe dane: RSI/MACD - tymczasowe."
     }
 
 @st.cache_data(show_spinner=False)
@@ -109,7 +110,7 @@ if st.button("\U0001F504 Odśwież dane teraz"):
 crypto = get_btc_data()
 btc = crypto.get("BTC", {})
 eth = crypto.get("ETH", {})
-sentiment = get_sentiment()
+sentiment = get_sentiment(btc)
 articles = get_rss_articles()
 
 # --- BTC Data ---

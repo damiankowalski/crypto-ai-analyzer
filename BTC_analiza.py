@@ -4,9 +4,11 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- CONFIG ---
-CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
+CMC_API_KEY = st.secrets["api_keys"]["cmc"]
+CRYPTOPANIC_KEY = st.secrets["api_keys"]["cryptopanic"]
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
 # --- HELPER FUNCTIONS ---
@@ -16,6 +18,27 @@ def get_btc_data():
     response = requests.get(url, headers=HEADERS, params=params)
     data = response.json()
     return data["data"]["BTC"]
+
+def get_btc_ohlcv(days):
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical"
+    params = {
+        "symbol": "BTC",
+        "convert": "USD",
+        "time_period": "daily",
+        "time_start": (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d"),
+        "time_end": datetime.datetime.now().strftime("%Y-%m-%d")
+    }
+    response = requests.get(url, headers=HEADERS, params=params)
+    data = response.json()
+    quotes = data["data"]["quotes"]
+    df = pd.DataFrame([{
+        "Date": q["time_open"].split("T")[0],
+        "Open": q["quote"]["USD"]["open"],
+        "High": q["quote"]["USD"]["high"],
+        "Low": q["quote"]["USD"]["low"],
+        "Close": q["quote"]["USD"]["close"]
+    } for q in quotes])
+    return df
 
 def get_etf_flows():
     today = datetime.date.today()
@@ -30,6 +53,40 @@ def get_sentiment():
         "MACD": -676,
         "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
     }
+
+def get_dynamic_quotes():
+    url = "https://cryptopanic.com/api/v1/posts/"
+    params = {
+        "auth_token": CRYPTOPANIC_KEY,
+        "currencies": "BTC",
+        "public": "true"
+    }
+    try:
+        response = requests.get(url, params=params)
+        news = response.json().get("results", [])
+        quotes = []
+        for item in news[:5]:
+            title = item.get("title", "")
+            source = item.get("source", {}).get("title", "")
+            link = item.get("url", "")
+            quotes.append(f"[{title}]({link}) – {source}")
+        return quotes
+    except Exception as e:
+        return [
+            "Brak połączenia z CryptoPanic API lub demo limit osiągnięty.",
+            "Wersja fallback: RSI bliski strefy wyprzedania – Investing.com",
+            "Liczba aktywnych adresów BTC spadła – AInvest",
+            "BlackRock ETF napływy +34.4 mln USD – Blockchain.News"
+        ]
+
+def calculate_rsi(df, period=14):
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    df['RSI'] = rsi
+    return df
 
 def plot_etf_flows_interactive(df):
     fig = px.bar(
@@ -50,13 +107,51 @@ def plot_etf_flows_interactive(df):
     )
     return fig
 
+def plot_candlestick(df):
+    fig = go.Figure(data=[
+        go.Candlestick(
+            x=df['Date'],
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'],
+            increasing_line_color='green', decreasing_line_color='red'
+        )
+    ])
+    fig.update_layout(
+        title='📉 Świecowy wykres BTC',
+        yaxis_title='Cena USD',
+        xaxis_title='Data',
+        height=400,
+        margin=dict(l=30, r=30, t=30, b=30)
+    )
+    return fig
+
+def plot_rsi(df):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], mode='lines', name='RSI'))
+    fig.add_hline(y=70, line_dash='dash', line_color='red')
+    fig.add_hline(y=30, line_dash='dash', line_color='green')
+    fig.update_layout(
+        title='📉 RSI (14-dniowe)',
+        yaxis_title='RSI',
+        xaxis_title='Data',
+        height=300,
+        margin=dict(l=30, r=30, t=30, b=30)
+    )
+    return fig
+
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
+interval = st.sidebar.radio("Zakres analizy:", options=["30 dni (dzienny)", "180 dni (tygodniowy)"])
+days = 30 if "30" in interval else 180
 btc = get_btc_data()
 sentiment = get_sentiment()
 etf_df = get_etf_flows()
+ohlcv_df = get_btc_ohlcv(days)
+ohlcv_df = calculate_rsi(ohlcv_df)
 
 # --- BTC Data ---
 st.subheader("📈 Aktualna sytuacja BTC")
@@ -73,6 +168,14 @@ st.write(sentiment)
 st.subheader("💰 Napływy do ETF BTC")
 st.plotly_chart(plot_etf_flows_interactive(etf_df), use_container_width=True)
 st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
+
+# --- Candlestick Chart ---
+st.subheader("🕯️ Wykres świecowy BTC")
+st.plotly_chart(plot_candlestick(ohlcv_df), use_container_width=True)
+
+# --- RSI ---
+st.subheader("📈 RSI w czasie")
+st.plotly_chart(plot_rsi(ohlcv_df), use_container_width=True)
 
 # --- Argumentacja ---
 st.subheader("🧠 Argumenty za / przeciw zakupowi BTC")
@@ -93,12 +196,8 @@ st.markdown("""
 
 # --- Odczyt danych źródłowych ---
 with st.expander("📚 Cytaty z analiz i źródeł"):
-    st.markdown("""
-- *„RSI bliski strefy wyprzedania, MACD silnie ujemny – to może sugerować dalszy spadek ceny BTC przed ewentualnym odbiciem”* – Investing.com
-- *„Liczba aktywnych adresów BTC spadła do 380 000 z 570–800k”* – AInvest
-- *„Ethereum przejmuje dominację w inflows ETF – może to przyciągać uwagę inwestorów kosztem Bitcoina”* – EconomicTimes
-- *„BlackRock zgłosił +34.4 mln USD napływów do ETF”* – Blockchain.News
-    """)
+    for quote in get_dynamic_quotes():
+        st.markdown(f"- *{quote}*")
 
 # --- Stopka ---
 st.markdown("---")

@@ -25,6 +25,8 @@ def get_sentiment():
     return {
         "RSI(14)": 31.5,
         "MACD": -676,
+        "Volume_24h": 22.1e9,
+        "EMA_trend": "spadkowy",
         "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
     }
 
@@ -54,6 +56,8 @@ def generate_dynamic_arguments(btc, sentiment):
     price_change = btc['quote']['USD']['percent_change_24h']
     rsi = sentiment.get("RSI(14)", 50)
     macd = sentiment.get("MACD", 0)
+    volume = sentiment.get("Volume_24h", 0)
+    ema_trend = sentiment.get("EMA_trend", "neutralny")
     dominance = btc['quote']['USD'].get("market_cap_dominance", 50)
 
     arguments_for = []
@@ -78,6 +82,16 @@ def generate_dynamic_arguments(btc, sentiment):
         arguments_for.append(f"Dominacja BTC: {dominance:.2f}% (powyżej 50%)")
     else:
         arguments_against.append(f"Dominacja BTC: {dominance:.2f}% (poniżej 50%)")
+
+    if ema_trend == "wzrostowy":
+        arguments_for.append("EMA wskazuje na wzrostowy trend")
+    elif ema_trend == "spadkowy":
+        arguments_against.append("EMA wskazuje na spadkowy trend")
+
+    if volume > 10e9:
+        arguments_for.append(f"Wolumen 24h wysoki: {volume/1e9:.2f} mld USD")
+    else:
+        arguments_against.append(f"Wolumen 24h niski: {volume/1e9:.2f} mld USD")
 
     return arguments_for, arguments_against
 

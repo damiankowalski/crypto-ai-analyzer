@@ -13,10 +13,10 @@ HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 # --- HELPER FUNCTIONS ---
 def get_btc_data():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
-    params = {"symbol": "BTC", "convert": "USD"}
+    params = {"symbol": "BTC,ETH", "convert": "USD"}
     response = requests.get(url, headers=HEADERS, params=params)
     data = response.json()
-    return data["data"]["BTC"]
+    return data["data"]
 
 def get_sentiment():
     return {
@@ -68,8 +68,9 @@ def get_dynamic_quotes(keyword=None):
             title = item.get("title", "")
             source = item.get("source", {}).get("title", "")
             link = item.get("url", "")
+            description = item.get("domain", "") or ""
             published = item.get("published_at", "")[:10]
-            quotes.append({"title": title, "source": source, "link": link, "date": published})
+            quotes.append({"title": title, "source": source, "link": link, "date": published, "desc": description})
         return sorted(quotes, key=lambda x: x['date'], reverse=True)
     except Exception:
         return []
@@ -78,16 +79,19 @@ def get_dynamic_quotes(keyword=None):
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
-btc = get_btc_data()
+crypto = get_btc_data()
+btc = crypto.get("BTC", {})
+eth = crypto.get("ETH", {})
 sentiment = get_sentiment()
 etf_df = get_etf_flows()
 
 # --- BTC Data ---
 st.subheader("📈 Aktualna sytuacja BTC")
-st.markdown(f"**Cena:** ${btc['quote']['USD']['price']:.2f}  ")
+st.markdown(f"**Cena BTC:** ${btc['quote']['USD']['price']:.2f}  ")
 st.markdown(f"**Zmiana 24h:** {btc['quote']['USD']['percent_change_24h']:.2f}%  ")
-st.markdown(f"**Wolumen 24h:** ${btc['quote']['USD']['volume_24h'] / 1e9:.2f} mld  ")
 st.markdown(f"**Dominacja BTC:** {btc['quote']['USD']['market_cap_dominance']:.2f}%  ")
+st.markdown(f"**Cena ETH:** ${eth['quote']['USD']['price']:.2f}  ")
+st.markdown(f"**Zmiana ETH 24h:** {eth['quote']['USD']['percent_change_24h']:.2f}%  ")
 
 # --- Techniczne ---
 st.subheader("🔍 Wskaźniki techniczne (1h/4h)")
@@ -121,7 +125,8 @@ keyword = st.text_input("Filtruj cytaty po słowie kluczowym (np. ETF, reversal)
 quotes = get_dynamic_quotes(keyword)
 if quotes:
     for quote in quotes:
-        st.markdown(f"- [{quote['title']}]({quote['link']}) – {quote['source']} ({quote['date']})")
+        with st.expander(f"{quote['date']} – {quote['title']} ({quote['source']})"):
+            st.markdown(f"[Czytaj więcej]({quote['link']})")
 else:
     st.warning("Brak aktualnych cytatów z CryptoPanic.")
 

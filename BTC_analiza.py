@@ -65,10 +65,7 @@ st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
 # Auto-refresh logic
-from streamlit_autorefresh import st_autorefresh
-# Automatyczne odświeżenie co 10 minut (600000 ms)
-st_autorefresh(interval=10 * 60 * 1000, key="datarefresh")
-
+st_autorefresh = st.experimental_data_editor if hasattr(st, 'experimental_data_editor') else st.empty
 refresh_interval = 10 * 60 * 1000  # 10 minutes in milliseconds
 st_autorefresh(label="auto_refresh", interval=refresh_interval, key="datarefresh")
 

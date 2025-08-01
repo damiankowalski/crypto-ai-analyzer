@@ -33,11 +33,13 @@ def get_sentiment():
     }
 
 def plot_etf_flows(df):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 3))  # Reduced size
     ax.bar(df['Date'], df['Inflows (USD)'], color=["green" if x > 0 else "red" for x in df['Inflows (USD)']])
     ax.axhline(0, color='black', linestyle='--')
     ax.set_title("Napływy do ETF BTC (symulacja)")
     ax.set_ylabel("USD")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     return fig
 
 # --- STREAMLIT UI ---
@@ -61,7 +63,7 @@ st.write(sentiment)
 
 # --- ETF flows ---
 st.subheader("💰 Napływy do ETF BTC")
-st.pyplot(plot_etf_flows(etf_df))
+st.pyplot(plot_etf_flows(etf_df), use_container_width=True)
 st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
 
 # --- Argumentacja ---

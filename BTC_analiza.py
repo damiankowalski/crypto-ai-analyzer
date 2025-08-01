@@ -11,6 +11,7 @@ CRYPTOPANIC_KEY = st.secrets["api_keys"]["cryptopanic"]
 HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 
 # --- HELPER FUNCTIONS ---
+@st.cache_data(show_spinner=False)
 def get_btc_data():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
     params = {"symbol": "BTC,ETH", "convert": "USD"}
@@ -18,6 +19,7 @@ def get_btc_data():
     data = response.json()
     return data["data"]
 
+@st.cache_data(show_spinner=False)
 def get_sentiment():
     return {
         "RSI(14)": 31.5,
@@ -25,6 +27,7 @@ def get_sentiment():
         "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
     }
 
+@st.cache_data(show_spinner=False)
 def get_etf_flows():
     today = datetime.date.today()
     return pd.DataFrame({
@@ -32,25 +35,7 @@ def get_etf_flows():
         "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6]
     })
 
-def plot_etf_flows_interactive(df):
-    fig = px.bar(
-        df,
-        x='Date',
-        y='Inflows (USD)',
-        color='Inflows (USD)',
-        color_continuous_scale=['red', 'green'],
-        title='Napływy do ETF BTC (symulacja)',
-        height=250
-    )
-    fig.update_layout(
-        margin=dict(l=30, r=30, t=30, b=30),
-        coloraxis_showscale=False,
-        yaxis_title='USD',
-        xaxis_title='',
-        title_font_size=14
-    )
-    return fig
-
+@st.cache_data(show_spinner=False)
 def get_dynamic_quotes(keyword=None):
     url = "https://cryptopanic.com/api/v1/posts/"
     params = {
@@ -79,6 +64,10 @@ def get_dynamic_quotes(keyword=None):
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
+if st.button("🔄 Odśwież dane teraz"):
+    st.cache_data.clear()
+    st.rerun()
+
 crypto = get_btc_data()
 btc = crypto.get("BTC", {})
 eth = crypto.get("ETH", {})
@@ -99,7 +88,22 @@ st.write(sentiment)
 
 # --- ETF flows ---
 st.subheader("💰 Napływy do ETF BTC")
-st.plotly_chart(plot_etf_flows_interactive(etf_df), use_container_width=True)
+st.plotly_chart(px.bar(
+    etf_df,
+    x='Date',
+    y='Inflows (USD)',
+    color='Inflows (USD)',
+    color_continuous_scale=['red', 'green'],
+    title='Napływy do ETF BTC (symulacja)',
+    height=250
+).update_layout(
+    margin=dict(l=30, r=30, t=30, b=30),
+    coloraxis_showscale=False,
+    yaxis_title='USD',
+    xaxis_title='',
+    title_font_size=14
+), use_container_width=True)
+
 st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
 
 # --- Argumentacja ---
@@ -126,7 +130,7 @@ quotes = get_dynamic_quotes(keyword)
 if quotes:
     for quote in quotes:
         with st.expander(f"{quote['date']} – {quote['title']} ({quote['source']})"):
-            st.markdown(f"[Czytaj więcej]({quote['link']})")
+            st.markdown(f"📎 [Pełny tekst artykułu]({quote['link']})")
 else:
     st.warning("Brak aktualnych cytatów z CryptoPanic.")
 

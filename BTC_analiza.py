@@ -25,7 +25,33 @@ def get_sentiment():
         "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
     }
 
-def get_dynamic_quotes():
+def get_etf_flows():
+    today = datetime.date.today()
+    return pd.DataFrame({
+        "Date": [today - datetime.timedelta(days=i) for i in range(5)],
+        "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6]
+    })
+
+def plot_etf_flows_interactive(df):
+    fig = px.bar(
+        df,
+        x='Date',
+        y='Inflows (USD)',
+        color='Inflows (USD)',
+        color_continuous_scale=['red', 'green'],
+        title='Napływy do ETF BTC (symulacja)',
+        height=250
+    )
+    fig.update_layout(
+        margin=dict(l=30, r=30, t=30, b=30),
+        coloraxis_showscale=False,
+        yaxis_title='USD',
+        xaxis_title='',
+        title_font_size=14
+    )
+    return fig
+
+def get_dynamic_quotes(keyword=None):
     url = "https://cryptopanic.com/api/v1/posts/"
     params = {
         "auth_token": CRYPTOPANIC_KEY,
@@ -35,15 +61,18 @@ def get_dynamic_quotes():
     try:
         response = requests.get(url, params=params)
         news = response.json().get("results", [])
+        if keyword:
+            news = [item for item in news if keyword.lower() in item.get("title", "").lower()]
         quotes = []
-        for item in news[:5]:
+        for item in news[:10]:
             title = item.get("title", "")
             source = item.get("source", {}).get("title", "")
             link = item.get("url", "")
-            quotes.append(f"[{title}]({link}) – {source}")
-        return quotes if quotes else ["Brak aktualnych cytatów z CryptoPanic."]
+            published = item.get("published_at", "")[:10]
+            quotes.append({"title": title, "source": source, "link": link, "date": published})
+        return sorted(quotes, key=lambda x: x['date'], reverse=True)
     except Exception:
-        return ["Błąd pobierania cytatów z CryptoPanic API"]
+        return []
 
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
@@ -51,6 +80,7 @@ st.title("📊 BTC Decision Support Dashboard")
 
 btc = get_btc_data()
 sentiment = get_sentiment()
+etf_df = get_etf_flows()
 
 # --- BTC Data ---
 st.subheader("📈 Aktualna sytuacja BTC")
@@ -62,6 +92,11 @@ st.markdown(f"**Dominacja BTC:** {btc['quote']['USD']['market_cap_dominance']:.2
 # --- Techniczne ---
 st.subheader("🔍 Wskaźniki techniczne (1h/4h)")
 st.write(sentiment)
+
+# --- ETF flows ---
+st.subheader("💰 Napływy do ETF BTC")
+st.plotly_chart(plot_etf_flows_interactive(etf_df), use_container_width=True)
+st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
 
 # --- Argumentacja ---
 st.subheader("🧠 Argumenty za / przeciw zakupowi BTC")
@@ -80,10 +115,15 @@ st.markdown("""
 ➡️ **Rekomendacja**: Obserwuj RSI < 30 i napływy ETF. Krótkoterminowo możliwe dalsze osunięcie.
 """)
 
-# --- Odczyt danych źródłowych ---
-with st.expander("📚 Cytaty z analiz i źródeł"):
-    for quote in get_dynamic_quotes():
-        st.markdown(f"- *{quote}*")
+# --- Cytaty ---
+st.subheader("📚 Cytaty z analiz i źródeł")
+keyword = st.text_input("Filtruj cytaty po słowie kluczowym (np. ETF, reversal):")
+quotes = get_dynamic_quotes(keyword)
+if quotes:
+    for quote in quotes:
+        st.markdown(f"- [{quote['title']}]({quote['link']}) – {quote['source']} ({quote['date']})")
+else:
+    st.warning("Brak aktualnych cytatów z CryptoPanic.")
 
 # --- Stopka ---
 st.markdown("---")

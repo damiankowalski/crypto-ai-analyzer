@@ -59,7 +59,8 @@ def get_dynamic_quotes(keyword=None):
             published = item.get("published_at", "")[:10]
             quotes.append({"title": title, "source": source, "link": link, "date": published, "desc": description})
         return sorted(quotes, key=lambda x: x['date'], reverse=True)
-    except Exception:
+    except Exception as e:
+        st.warning(f"Błąd pobierania cytatów z CryptoPanic: {e}")
         return []
 
 # --- STREAMLIT UI ---
@@ -101,12 +102,15 @@ latest_inflow = etf_df.iloc[-1]['Inflows (USD)']
 latest_price = etf_df.iloc[-1]['BTC Price']
 prev_price = etf_df.iloc[-2]['BTC Price']
 
-if latest_inflow > 0 and latest_price > prev_price:
-    st.success("📈 Momentum: **BYCZO** – ETF inflows rosną, a cena BTC również!")
-elif latest_inflow < 0 and latest_price < prev_price:
-    st.warning("📉 Momentum: **NEGATYWNE** – spadki zarówno inflowów jak i ceny.")
+if pd.notnull(latest_price) and pd.notnull(prev_price):
+    if latest_inflow > 0 and latest_price > prev_price:
+        st.success("📈 Momentum: **BYCZO** – ETF inflows rosną, a cena BTC również!")
+    elif latest_inflow < 0 and latest_price < prev_price:
+        st.warning("📉 Momentum: **NEGATYWNE** – spadki zarówno inflowów jak i ceny.")
+    else:
+        st.info("🤔 Momentum: **NIEJEDNOZNACZNE** – sprzeczne sygnały z ETF i cen.")
 else:
-    st.info("🤔 Momentum: **NIEJEDNOZNACZNE** – sprzeczne sygnały z ETF i cen.")
+    st.info("Brak danych do oceny momentum.")
 
 # --- ETF flows chart ---
 st.subheader("📊 Napływy ETF vs Cena BTC")
@@ -169,12 +173,17 @@ st.markdown("""
 # --- Historia rekomendacji ---
 st.subheader("📅 Historia rekomendacji")
 history_df = etf_df.copy()
-history_df["Momentum"] = [
-    "BYCZO" if row["Inflows (USD)"] > 0 and i > 0 and row["BTC Price"] > etf_df.iloc[i-1]["BTC Price"]
-    else "NEGATYWNE" if row["Inflows (USD)"] < 0 and i > 0 and row["BTC Price"] < etf_df.iloc[i-1]["BTC Price"]
-    else "NIEJEDNOZNACZNE"
-    for i, row in etf_df.iterrows()
-]
+history_df["Momentum"] = []
+for i, row in etf_df.iterrows():
+    if i == 0 or pd.isna(row["BTC Price"]) or pd.isna(etf_df.iloc[i-1]["BTC Price"]):
+        history_df.at[i, "Momentum"] = "BRAK DANYCH"
+    elif row["Inflows (USD)"] > 0 and row["BTC Price"] > etf_df.iloc[i-1]["BTC Price"]:
+        history_df.at[i, "Momentum"] = "BYCZO"
+    elif row["Inflows (USD)"] < 0 and row["BTC Price"] < etf_df.iloc[i-1]["BTC Price"]:
+        history_df.at[i, "Momentum"] = "NEGATYWNE"
+    else:
+        history_df.at[i, "Momentum"] = "NIEJEDNOZNACZNE"
+
 st.dataframe(history_df.rename(columns={"Date": "Data", "Inflows (USD)": "Napływ ETF", "BTC Price": "Cena BTC"}))
 
 # --- Cytaty ---

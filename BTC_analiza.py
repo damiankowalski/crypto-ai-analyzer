@@ -27,25 +27,30 @@ def get_btc_data():
 
 
 def get_btc_ohlcv(days):
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical"
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
     params = {
-        "id": 1,
+        "symbol": "BTC",
         "convert": "USD",
-        "time_period": "daily",
-        "time_start": (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d"),
-        "time_end": datetime.datetime.now().strftime("%Y-%m-%d")
+        "count": days,
+        "interval": "daily"
     }
     response = requests.get(url, headers=HEADERS, params=params)
     data = response.json()
+
+    if "data" not in data or "quotes" not in data["data"]:
+        st.error("Brak danych OHLCV w odpowiedzi API. Sprawdź limit planu lub dostępność danych.")
+        return pd.DataFrame()
+
     quotes = data["data"]["quotes"]
     df = pd.DataFrame([{
-        "Date": q["time_open"].split("T")[0],
+        "Date": q["timestamp"][:10],
         "Open": q["quote"]["USD"]["open"],
         "High": q["quote"]["USD"]["high"],
         "Low": q["quote"]["USD"]["low"],
         "Close": q["quote"]["USD"]["close"]
     } for q in quotes])
     return df
+
 
 def get_etf_flows():
     today = datetime.date.today()

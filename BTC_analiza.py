@@ -3,6 +3,7 @@ import requests
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 # --- CONFIG ---
 CMC_API_KEY = "4f9d6276-feee-4925-aaa6-cc6d68701e12"
@@ -17,7 +18,6 @@ def get_btc_data():
     return data["data"]["BTC"]
 
 def get_etf_flows():
-    # Placeholder – simulate with dummy data until CMC exposes ETF endpoint
     today = datetime.date.today()
     return pd.DataFrame({
         "Date": [today - datetime.timedelta(days=i) for i in range(5)],
@@ -25,21 +25,29 @@ def get_etf_flows():
     })
 
 def get_sentiment():
-    # Dummy sentiment from external analysis (normally would pull from a source)
     return {
         "RSI(14)": 31.5,
         "MACD": -676,
         "Interpretacja": "RSI wskazuje na niemal wyprzedany rynek; MACD sugeruje kontynuację trendu spadkowego."
     }
 
-def plot_etf_flows(df):
-    fig, ax = plt.subplots(figsize=(6, 3))  # Reduced size
-    ax.bar(df['Date'], df['Inflows (USD)'], color=["green" if x > 0 else "red" for x in df['Inflows (USD)']])
-    ax.axhline(0, color='black', linestyle='--')
-    ax.set_title("Napływy do ETF BTC (symulacja)")
-    ax.set_ylabel("USD")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+def plot_etf_flows_interactive(df):
+    fig = px.bar(
+        df,
+        x='Date',
+        y='Inflows (USD)',
+        color='Inflows (USD)',
+        color_continuous_scale=['red', 'green'],
+        title='Napływy do ETF BTC (symulacja)',
+        height=250
+    )
+    fig.update_layout(
+        margin=dict(l=30, r=30, t=30, b=30),
+        coloraxis_showscale=False,
+        yaxis_title='USD',
+        xaxis_title='',
+        title_font_size=14
+    )
     return fig
 
 # --- STREAMLIT UI ---
@@ -63,7 +71,7 @@ st.write(sentiment)
 
 # --- ETF flows ---
 st.subheader("💰 Napływy do ETF BTC")
-st.pyplot(plot_etf_flows(etf_df), use_container_width=True)
+st.plotly_chart(plot_etf_flows_interactive(etf_df), use_container_width=True)
 st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
 
 # --- Argumentacja ---

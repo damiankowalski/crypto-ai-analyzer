@@ -6,3 +6,4 @@ schedule
 requests
 yfinance
 plotly
+streamlit-autorefresh

@@ -159,6 +159,17 @@ st.markdown("""
 ➡️ **Rekomendacja**: Obserwuj RSI < 30 i napływy ETF. Krótkoterminowo możliwe dalsze osunięcie.
 """)
 
+# --- Historia rekomendacji ---
+st.subheader("📅 Historia rekomendacji")
+history_df = etf_df.copy()
+history_df["Momentum"] = [
+    "BYCZO" if row["Inflows (USD)"] > 0 and i > 0 and row["BTC Price"] > etf_df.iloc[i-1]["BTC Price"]
+    else "NEGATYWNE" if row["Inflows (USD)"] < 0 and i > 0 and row["BTC Price"] < etf_df.iloc[i-1]["BTC Price"]
+    else "NIEJEDNOZNACZNE"
+    for i, row in etf_df.iterrows()
+]
+st.dataframe(history_df.rename(columns={"Date": "Data", "Inflows (USD)": "Napływ ETF", "BTC Price": "Cena BTC"}))
+
 # --- Cytaty ---
 st.subheader("📚 Cytaty z analiz i źródeł")
 keyword = st.text_input("Filtruj cytaty po słowie kluczowym (np. ETF, reversal):")

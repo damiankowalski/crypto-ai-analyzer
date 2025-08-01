@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import feedparser
 from streamlit_autorefresh import st_autorefresh
 
 # --- CONFIG ---
@@ -28,13 +29,25 @@ def get_sentiment():
     }
 
 @st.cache_data(show_spinner=False)
-def get_etf_flows():
-    today = datetime.date.today()
-    return pd.DataFrame({
-        "Date": [today - datetime.timedelta(days=i) for i in range(5)][::-1],
-        "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6],
-        "BTC Price": [None, None, None, None, None]
-    })
+def get_rss_articles():
+    feeds = [
+        "https://www.coindesk.com/arc/outboundfeeds/rss/?outputType=xml",
+        "https://cointelegraph.com/rss",
+        "https://bitcoinist.com/feed"
+    ]
+    articles = []
+    for url in feeds:
+        try:
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:3]:
+                articles.append({
+                    "title": entry.title,
+                    "link": entry.link,
+                    "published": entry.get("published", "brak daty")
+                })
+        except Exception as e:
+            continue
+    return articles
 
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
@@ -51,11 +64,7 @@ crypto = get_btc_data()
 btc = crypto.get("BTC", {})
 eth = crypto.get("ETH", {})
 sentiment = get_sentiment()
-etf_df = get_etf_flows()
-
-etf_df.at[etf_df.index[-1], "BTC Price"] = btc['quote']['USD']['price']
-if pd.isna(etf_df.iloc[-2]['BTC Price']):
-    etf_df.at[etf_df.index[-2], "BTC Price"] = btc['quote']['USD']['price']
+articles = get_rss_articles()
 
 # --- BTC Data ---
 st.subheader("\U0001F4C8 Aktualna sytuacja BTC")
@@ -65,62 +74,9 @@ st.markdown(f"**Dominacja BTC:** {btc['quote']['USD']['market_cap_dominance']:.2
 st.markdown(f"**Cena ETH:** ${eth['quote']['USD']['price']:.2f}  ")
 st.markdown(f"**Zmiana ETH 24h:** {eth['quote']['USD']['percent_change_24h']:.2f}%  ")
 
-# --- Momentum signal ---
-st.subheader("\U0001F4CA Sygnał momentum")
-latest_inflow = etf_df.iloc[-1]['Inflows (USD)']
-latest_price = etf_df.iloc[-1]['BTC Price']
-prev_price = etf_df.iloc[-2]['BTC Price']
-
-if pd.notnull(latest_price) and pd.notnull(prev_price):
-    if latest_inflow > 0 and latest_price > prev_price:
-        st.success("\U0001F4C8 Momentum: **BYCZO** – ETF inflows rosną, a cena BTC również!")
-    elif latest_inflow < 0 and latest_price < prev_price:
-        st.warning("\U0001F4C9 Momentum: **NEGATYWNE** – spadki zarówno inflowów jak i ceny.")
-    else:
-        st.info("\U0001F914 Momentum: **NIEJEDNOZNACZNE** – sprzeczne sygnały z ETF i cen.")
-else:
-    st.info("Brak danych do oceny momentum.")
-
-# --- ETF flows chart ---
-st.subheader("\U0001F4CA Napływy ETF vs Cena BTC")
-fig_mixed = go.Figure()
-fig_mixed.add_trace(go.Bar(x=etf_df['Date'], y=etf_df['Inflows (USD)'], name="ETF Inflows", marker_color='green'))
-fig_mixed.add_trace(go.Scatter(x=etf_df['Date'], y=etf_df['BTC Price'], name="BTC Price", yaxis="y2", mode="lines+markers"))
-fig_mixed.update_layout(
-    title="Napływy ETF i Cena BTC",
-    xaxis=dict(title="Data"),
-    yaxis=dict(title="Inflows (USD)"),
-    yaxis2=dict(title="BTC Price", overlaying="y", side="right"),
-    height=300,
-    margin=dict(l=30, r=30, t=30, b=30)
-)
-st.plotly_chart(fig_mixed, use_container_width=True)
-
 # --- Techniczne ---
 st.subheader("\U0001F50D Wskaźniki techniczne (1h/4h)")
 st.write(sentiment)
-
-# --- ETF flows bar ---
-st.subheader("\U0001F4B0 Napływy do ETF BTC")
-fig_flows = px.bar(
-    etf_df,
-    x='Date',
-    y='Inflows (USD)',
-    color='Inflows (USD)',
-    color_continuous_scale=['red', 'green'],
-    title='Napływy do ETF BTC (symulacja)',
-    height=250
-)
-fig_flows.update_layout(
-    margin=dict(l=30, r=30, t=30, b=30),
-    coloraxis_showscale=False,
-    yaxis_title='USD',
-    xaxis_title='',
-    title_font_size=14
-)
-st.plotly_chart(fig_flows, use_container_width=True)
-
-st.caption("Źródło: symulowane dane + aktualna cena z CoinMarketCap")
 
 # --- Argumentacja ---
 st.subheader("\U0001F9E0 Argumenty za / przeciw zakupowi BTC")
@@ -141,8 +97,14 @@ st.markdown("""
 
 # --- Cytaty z RSS ---
 st.subheader("\U0001F4DA Cytaty z analiz i źródeł")
-st.markdown("Aktualnie wyłączono historię rekomendacji ze względu na błędy. Naprawa w toku.")
+if articles:
+    for art in articles:
+        st.markdown(f"**{art['title']}**  ")
+        st.caption(f"{art['published']}")
+        st.write(f"[Link do artykułu]({art['link']})")
+else:
+    st.info("Brak aktualnych cytatów z kanałów RSS.")
 
 # --- Stopka ---
 st.markdown("---")
-st.caption("Dashboard by GPT | Źródła danych: CoinMarketCap API")
+st.caption("Dashboard by GPT | Źródła danych: CoinMarketCap API + RSS feeds")

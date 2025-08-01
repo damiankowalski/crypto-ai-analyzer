@@ -34,7 +34,7 @@ def get_etf_flows():
     return pd.DataFrame({
         "Date": [today - datetime.timedelta(days=i) for i in range(5)][::-1],
         "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6],
-        "BTC Price": [60123, 58900, 59350, 57800, 57450]
+        "BTC Price": [None, None, None, None, None]  # zostanie nadpisana
     })
 
 @st.cache_data(show_spinner=False)
@@ -79,6 +79,9 @@ btc = crypto.get("BTC", {})
 eth = crypto.get("ETH", {})
 sentiment = get_sentiment()
 etf_df = get_etf_flows()
+
+# Nadpisanie ostatniego wiersza realną ceną BTC
+etf_df.at[etf_df.index[-1], "BTC Price"] = btc['quote']['USD']['price']
 
 # --- BTC Data ---
 st.subheader("📈 Aktualna sytuacja BTC")
@@ -140,7 +143,7 @@ fig_flows.update_layout(
 )
 st.plotly_chart(fig_flows, use_container_width=True)
 
-st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
+st.caption("Źródło: symulowane dane + aktualna cena z CoinMarketCap")
 
 # --- Argumentacja ---
 st.subheader("🧠 Argumenty za / przeciw zakupowi BTC")

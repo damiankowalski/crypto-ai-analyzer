@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 
 # --- CONFIG ---
 CMC_API_KEY = st.secrets["api_keys"]["cmc"]
@@ -65,9 +66,8 @@ st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
 # Auto-refresh logic
-st_autorefresh = st.experimental_data_editor if hasattr(st, 'experimental_data_editor') else st.empty
 refresh_interval = 10 * 60 * 1000  # 10 minutes in milliseconds
-st_autorefresh(label="auto_refresh", interval=refresh_interval, key="datarefresh")
+st_autorefresh(interval=refresh_interval, key="datarefresh")
 
 if st.button("🔄 Odśwież dane teraz"):
     st.cache_data.clear()

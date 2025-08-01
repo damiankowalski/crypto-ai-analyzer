@@ -173,16 +173,19 @@ st.markdown("""
 # --- Historia rekomendacji ---
 st.subheader("📅 Historia rekomendacji")
 history_df = etf_df.copy()
-history_df["Momentum"] = []
-for i, row in etf_df.iterrows():
-    if i == 0 or pd.isna(row["BTC Price"]) or pd.isna(etf_df.iloc[i-1]["BTC Price"]):
-        history_df.at[i, "Momentum"] = "BRAK DANYCH"
-    elif row["Inflows (USD)"] > 0 and row["BTC Price"] > etf_df.iloc[i-1]["BTC Price"]:
-        history_df.at[i, "Momentum"] = "BYCZO"
-    elif row["Inflows (USD)"] < 0 and row["BTC Price"] < etf_df.iloc[i-1]["BTC Price"]:
-        history_df.at[i, "Momentum"] = "NEGATYWNE"
-    else:
-        history_df.at[i, "Momentum"] = "NIEJEDNOZNACZNE"
+history_df["Momentum"] = "BRAK DANYCH"
+for i in range(1, len(history_df)):
+    curr = history_df.iloc[i]
+    prev = history_df.iloc[i - 1]
+
+    if pd.notna(curr["BTC Price"]) and pd.notna(prev["BTC Price"]):
+        if curr["Inflows (USD)"] > 0 and curr["BTC Price"] > prev["BTC Price"]:
+            history_df.at[history_df.index[i], "Momentum"] = "BYCZO"
+        elif curr["Inflows (USD)"] < 0 and curr["BTC Price"] < prev["BTC Price"]:
+            history_df.at[history_df.index[i], "Momentum"] = "NEGATYWNE"
+        else:
+            history_df.at[history_df.index[i], "Momentum"] = "NIEJEDNOZNACZNE"
+
 
 st.dataframe(history_df.rename(columns={"Date": "Data", "Inflows (USD)": "Napływ ETF", "BTC Price": "Cena BTC"}))
 

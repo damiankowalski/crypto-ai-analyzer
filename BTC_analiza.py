@@ -64,6 +64,11 @@ def get_dynamic_quotes(keyword=None):
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("📊 BTC Decision Support Dashboard")
 
+# Auto-refresh logic
+st_autorefresh = st.experimental_data_editor if hasattr(st, 'experimental_data_editor') else st.empty
+refresh_interval = 10 * 60 * 1000  # 10 minutes in milliseconds
+st_autorefresh(label="auto_refresh", interval=refresh_interval, key="datarefresh")
+
 if st.button("🔄 Odśwież dane teraz"):
     st.cache_data.clear()
     st.rerun()
@@ -88,7 +93,7 @@ st.write(sentiment)
 
 # --- ETF flows ---
 st.subheader("💰 Napływy do ETF BTC")
-st.plotly_chart(px.bar(
+fig_flows = px.bar(
     etf_df,
     x='Date',
     y='Inflows (USD)',
@@ -96,13 +101,15 @@ st.plotly_chart(px.bar(
     color_continuous_scale=['red', 'green'],
     title='Napływy do ETF BTC (symulacja)',
     height=250
-).update_layout(
+)
+fig_flows.update_layout(
     margin=dict(l=30, r=30, t=30, b=30),
     coloraxis_showscale=False,
     yaxis_title='USD',
     xaxis_title='',
     title_font_size=14
-), use_container_width=True)
+)
+st.plotly_chart(fig_flows, use_container_width=True)
 
 st.caption("Źródło: symulowane dane na podstawie analizy CoinGlass i Blockchain.News")
 
@@ -131,6 +138,7 @@ if quotes:
     for quote in quotes:
         with st.expander(f"{quote['date']} – {quote['title']} ({quote['source']})"):
             st.markdown(f"📎 [Pełny tekst artykułu]({quote['link']})")
+            st.caption(f"Domena: {quote['desc']}")
 else:
     st.warning("Brak aktualnych cytatów z CryptoPanic.")
 

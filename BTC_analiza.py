@@ -83,6 +83,10 @@ etf_df = get_etf_flows()
 # Nadpisanie ostatniego wiersza realną ceną BTC
 etf_df.at[etf_df.index[-1], "BTC Price"] = btc['quote']['USD']['price']
 
+# Ustawienie domyślnej ceny poprzedniego dnia, jeśli brak
+if pd.isna(etf_df.iloc[-2]['BTC Price']):
+    etf_df.at[etf_df.index[-2], "BTC Price"] = btc['quote']['USD']['price']
+
 # --- BTC Data ---
 st.subheader("📈 Aktualna sytuacja BTC")
 st.markdown(f"**Cena BTC:** ${btc['quote']['USD']['price']:.2f}  ")

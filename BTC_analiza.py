@@ -27,38 +27,19 @@ def get_btc_data():
 
 
 def get_btc_ohlcv(days):
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical"
-    params = {
-        "symbol": "BTC",
-        "convert": "USD",
-        "time_period": "daily",
-        "time_start": (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d"),
-        "time_end": datetime.datetime.now().strftime("%Y-%m-%d")
-    }
-    response = requests.get(url, headers=HEADERS, params=params)
-    data = response.json()
+    st.warning("⚠️ Twoje konto CoinMarketCap nie wspiera danych OHLCV. Pokazywane dane są symulowane.")
+    today = datetime.date.today()
+    dates = [today - datetime.timedelta(days=i) for i in range(days)][::-1]
+    close_prices = [btc['quote']['USD']['price'] * (1 + 0.01 * (0.5 - i / days)) for i in range(days)]
+    df = pd.DataFrame({
+        "Date": [d.strftime("%Y-%m-%d") for d in dates],
+        "Open": close_prices,
+        "High": [p * 1.01 for p in close_prices],
+        "Low": [p * 0.99 for p in close_prices],
+        "Close": close_prices
+    })
+    return df
 
-    if "data" not in data or "quotes" not in data["data"]:
-        st.error("❌ Brak danych OHLCV z CoinMarketCap API")
-        st.json(data)
-        st.stop()
-
-    quotes = data["data"]["quotes"]
-    parsed = []
-    for q in quotes:
-        try:
-            parsed.append({
-                "Date": q.get("time_open", "").split("T")[0],
-                "Open": q["quote"]["USD"]["open"],
-                "High": q["quote"]["USD"]["high"],
-                "Low": q["quote"]["USD"]["low"],
-                "Close": q["quote"]["USD"]["close"]
-            })
-        except KeyError:
-            st.warning("⚠️ Niektóre dane OHLCV są niekompletne i zostały pominięte.")
-            continue
-
-    return pd.DataFrame(parsed)
 
 
 

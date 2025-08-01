@@ -49,6 +49,38 @@ def get_rss_articles():
             continue
     return articles
 
+# --- GENERATE DYNAMIC ARGUMENTS ---
+def generate_dynamic_arguments(btc, sentiment):
+    price_change = btc['quote']['USD']['percent_change_24h']
+    rsi = sentiment.get("RSI(14)", 50)
+    macd = sentiment.get("MACD", 0)
+    dominance = btc['quote']['USD'].get("market_cap_dominance", 50)
+
+    arguments_for = []
+    arguments_against = []
+
+    if rsi < 32:
+        arguments_for.append(f"RSI {rsi:.1f} wskazuje na wyprzedany rynek")
+    else:
+        arguments_against.append(f"RSI {rsi:.1f} nie wskazuje jeszcze na wyprzedanie")
+
+    if price_change > 0:
+        arguments_for.append(f"Cena BTC rośnie: +{price_change:.2f}% (24h)")
+    else:
+        arguments_against.append(f"Cena BTC spada: {price_change:.2f}% (24h)")
+
+    if macd > 0:
+        arguments_for.append(f"MACD dodatni: {macd}")
+    else:
+        arguments_against.append(f"MACD ujemny: {macd}")
+
+    if dominance > 50:
+        arguments_for.append(f"Dominacja BTC: {dominance:.2f}% (powyżej 50%)")
+    else:
+        arguments_against.append(f"Dominacja BTC: {dominance:.2f}% (poniżej 50%)")
+
+    return arguments_for, arguments_against
+
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
 st.title("\U0001F4CA BTC Decision Support Dashboard")
@@ -80,20 +112,15 @@ st.write(sentiment)
 
 # --- Argumentacja ---
 st.subheader("\U0001F9E0 Argumenty za / przeciw zakupowi BTC")
-st.markdown("""
-### ✅ **ZA ZAKUPEM**:
-- RSI bliski wyprzedania (poniżej 32), możliwe techniczne odbicie
-- ETF BlackRock z napływem +34.4 mln USD [Blockchain.News]
-- Możliwe stabilizowanie się po spadkach (obrona poziomu ~115k USD)
+args_for, args_against = generate_dynamic_arguments(btc, sentiment)
 
-### ❌ **PRZECIW ZAKUPOWI**:
-- MACD silnie negatywny: –676 (sygnał kontynuacji spadków)
-- Wolumen rośnie przy spadającej cenie → presja sprzedażowa
-- Spadająca dominacja BTC i rosnące inflows w ETH ETF (rotacja kapitału)
-- Liczba aktywnych adresów BTC spadła o ~47% w lipcu (źródło: AInvest)
+st.markdown("### ✅ **ZA ZAKUPEM**:")
+for arg in args_for:
+    st.markdown(f"- {arg}")
 
-➡️ **Rekomendacja**: Obserwuj RSI < 30 i napływy ETF. Krótkoterminowo możliwe dalsze osunięcie.
-""")
+st.markdown("### ❌ **PRZECIW ZAKUPOWI**:")
+for arg in args_against:
+    st.markdown(f"- {arg}")
 
 # --- Cytaty z RSS ---
 st.subheader("\U0001F4DA Cytaty z analiz i źródeł")

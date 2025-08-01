@@ -32,8 +32,9 @@ def get_sentiment():
 def get_etf_flows():
     today = datetime.date.today()
     return pd.DataFrame({
-        "Date": [today - datetime.timedelta(days=i) for i in range(5)],
-        "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6]
+        "Date": [today - datetime.timedelta(days=i) for i in range(5)][::-1],
+        "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6],
+        "BTC Price": [60123, 58900, 59350, 57800, 57450]
     })
 
 @st.cache_data(show_spinner=False)
@@ -87,11 +88,39 @@ st.markdown(f"**Dominacja BTC:** {btc['quote']['USD']['market_cap_dominance']:.2
 st.markdown(f"**Cena ETH:** ${eth['quote']['USD']['price']:.2f}  ")
 st.markdown(f"**Zmiana ETH 24h:** {eth['quote']['USD']['percent_change_24h']:.2f}%  ")
 
+# --- Momentum signal ---
+st.subheader("📊 Sygnał momentum")
+latest_inflow = etf_df.iloc[-1]['Inflows (USD)']
+latest_price = etf_df.iloc[-1]['BTC Price']
+prev_price = etf_df.iloc[-2]['BTC Price']
+
+if latest_inflow > 0 and latest_price > prev_price:
+    st.success("📈 Momentum: **BYCZO** – ETF inflows rosną, a cena BTC również!")
+elif latest_inflow < 0 and latest_price < prev_price:
+    st.warning("📉 Momentum: **NEGATYWNE** – spadki zarówno inflowów jak i ceny.")
+else:
+    st.info("🤔 Momentum: **NIEJEDNOZNACZNE** – sprzeczne sygnały z ETF i cen.")
+
+# --- ETF flows chart ---
+st.subheader("📊 Napływy ETF vs Cena BTC")
+fig_mixed = go.Figure()
+fig_mixed.add_trace(go.Bar(x=etf_df['Date'], y=etf_df['Inflows (USD)'], name="ETF Inflows", marker_color='green'))
+fig_mixed.add_trace(go.Scatter(x=etf_df['Date'], y=etf_df['BTC Price'], name="BTC Price", yaxis="y2", mode="lines+markers"))
+fig_mixed.update_layout(
+    title="Napływy ETF i Cena BTC",
+    xaxis=dict(title="Data"),
+    yaxis=dict(title="Inflows (USD)"),
+    yaxis2=dict(title="BTC Price", overlaying="y", side="right"),
+    height=300,
+    margin=dict(l=30, r=30, t=30, b=30)
+)
+st.plotly_chart(fig_mixed, use_container_width=True)
+
 # --- Techniczne ---
 st.subheader("🔍 Wskaźniki techniczne (1h/4h)")
 st.write(sentiment)
 
-# --- ETF flows ---
+# --- ETF flows bar only ---
 st.subheader("💰 Napływy do ETF BTC")
 fig_flows = px.bar(
     etf_df,

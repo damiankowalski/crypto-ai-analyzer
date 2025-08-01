@@ -14,10 +14,17 @@ HEADERS = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
 # --- HELPER FUNCTIONS ---
 def get_btc_data():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
-    params = {"id": 1, "convert": "USD"}
+    params = {"symbol": "BTC", "convert": "USD"}
     response = requests.get(url, headers=HEADERS, params=params)
     data = response.json()
+    
+    if "data" not in data or "BTC" not in data["data"]:
+        st.error("❌ Błąd pobierania danych z CoinMarketCap. Odpowiedź API:")
+        st.json(data)  # pokaże całą strukturę
+        st.stop()
+    
     return data["data"]["BTC"]
+
 
 def get_btc_ohlcv(days):
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical"

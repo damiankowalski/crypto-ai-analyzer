@@ -5,7 +5,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
-import feedparser
 
 # --- CONFIG ---
 CMC_API_KEY = st.secrets["api_keys"]["cmc"]
@@ -36,26 +35,6 @@ def get_etf_flows():
         "Inflows (USD)": [34.4e6, -12.5e6, 3.1e6, -6.2e6, -2.7e6],
         "BTC Price": [None, None, None, None, None]
     })
-
-@st.cache_data(show_spinner=False)
-def get_rss_quotes(keyword=None):
-    feeds = [
-        "https://www.coindesk.com/arc/outboundfeeds/rss/",
-        "https://cointelegraph.com/rss",
-        "https://bitcoinist.com/feed/"
-    ]
-    quotes = []
-    for feed_url in feeds:
-        feed = feedparser.parse(feed_url)
-        for entry in feed.entries[:10]:
-            title = entry.title
-            link = entry.link
-            published = entry.published if "published" in entry else ""
-            source = feed.feed.get("title", "")
-            if keyword and keyword.lower() not in title.lower():
-                continue
-            quotes.append({"title": title, "link": link, "date": published[:10], "source": source, "desc": feed_url})
-    return sorted(quotes, key=lambda x: x["date"], reverse=True)
 
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="BTC Decision Dashboard", layout="wide")
@@ -160,34 +139,10 @@ st.markdown("""
 ➡️ **Rekomendacja**: Obserwuj RSI < 30 i napływy ETF. Krótkoterminowo możliwe dalsze osunięcie.
 """)
 
-# --- Historia rekomendacji ---
-st.subheader("\U0001F4C5 Historia rekomendacji")
-history_df = etf_df.copy()
-history_df["Momentum"] = []
-for i, row in etf_df.iterrows():
-    if i == 0 or pd.isna(row["BTC Price"]) or pd.isna(etf_df.iloc[i-1]["BTC Price"]):
-        history_df.at[i, "Momentum"] = "BRAK DANYCH"
-    elif row["Inflows (USD)"] > 0 and row["BTC Price"] > etf_df.iloc[i-1]["BTC Price"]:
-        history_df.at[i, "Momentum"] = "BYCZO"
-    elif row["Inflows (USD)"] < 0 and row["BTC Price"] < etf_df.iloc[i-1]["BTC Price"]:
-        history_df.at[i, "Momentum"] = "NEGATYWNE"
-    else:
-        history_df.at[i, "Momentum"] = "NIEJEDNOZNACZNE"
-
-st.dataframe(history_df.rename(columns={"Date": "Data", "Inflows (USD)": "Napływ ETF", "BTC Price": "Cena BTC"}))
-
 # --- Cytaty z RSS ---
 st.subheader("\U0001F4DA Cytaty z analiz i źródeł")
-keyword = st.text_input("Filtruj cytaty po słowie kluczowym (np. ETF, reversal):")
-quotes = get_rss_quotes(keyword)
-if quotes:
-    for quote in quotes:
-        with st.expander(f"{quote['date']} – {quote['title']} ({quote['source']})"):
-            st.markdown(f"\U0001F4CE [Pełny tekst artykułu]({quote['link']})")
-            st.caption(f"Źródło: {quote['desc']}")
-else:
-    st.warning("Brak aktualnych cytatów z kanałów RSS.")
+st.markdown("Aktualnie wyłączono historię rekomendacji ze względu na błędy. Naprawa w toku.")
 
 # --- Stopka ---
 st.markdown("---")
-st.caption("Dashboard by GPT | Źródła danych: CoinMarketCap API, RSS (Coindesk, Cointelegraph, Bitcoinist)")
+st.caption("Dashboard by GPT | Źródła danych: CoinMarketCap API")
